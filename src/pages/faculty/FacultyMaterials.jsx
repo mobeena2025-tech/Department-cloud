@@ -308,7 +308,7 @@ export default function FacultyMaterials({ onNavigate }) {
                     </p>
 
                     <div className="flex items-center gap-2 text-[10px] font-mono text-cloud-400 mt-1 truncate">
-                      <span className="text-brand-600 font-medium">{mat.storageKey}</span>
+                      <span className="text-brand-600 font-medium">{mat.storagePath}</span>
                       <span>&bull;</span>
                       <span>{mat.size}</span>
                       <span>&bull;</span>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   UploadCloud,
   FileText,
@@ -14,19 +14,17 @@ import {
   HelpCircle,
   Tag
 } from 'lucide-react';
-import { api } from '../../services/api';
-import { useAuth } from '../../context/AuthContext';
+import { api, validatePdfFile, formatFileSize } from '../../services/api';
 import { useNotification } from '../../context/NotificationContext';
 
 export default function UploadMaterial({ onNavigate }) {
-  const { currentUser } = useAuth();
   const { addToast } = useNotification();
 
   const [courses, setCourses] = useState([]);
   const [loadingCourses, setLoadingCourses] = useState(true);
 
   // Form State
-  const [courseId, setCourseId] = useState('CS202');
+  const [courseId, setCourseId] = useState('');
   const [unitNumber, setUnitNumber] = useState(3);
   const [semester, setSemester] = useState(6);
   const [materialType, setMaterialType] = useState('PDF Notes');
@@ -37,12 +35,9 @@ export default function UploadMaterial({ onNavigate }) {
   const [accessPermissions, setAccessPermissions] = useState('Department Enrolled Only');
   const [downloadPermitted, setDownloadPermitted] = useState(true);
 
-  // Upload simulation state
-  const [selectedFile, setSelectedFile] = useState({
-    name: 'DBMS_Unit3_Normalization_BCNF.pdf',
-    size: '4.8 MB',
-    type: 'application/pdf',
-  });
+  // Real file chosen by the user (PDF, max 10 MB)
+  const [selectedFile, setSelectedFile] = useState(null);
+  const fileInputRef = useRef(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadResult, setUploadResult] = useState(null);
   const [classifying, setClassifying] = useState(false);
@@ -53,15 +48,10 @@ export default function UploadMaterial({ onNavigate }) {
         const res = await api.getCourses();
         if (res?.courses?.length) {
           setCourses(res.courses);
+          setCourseId((prev) => prev || res.courses[0].id);
         }
-      } catch {
-        // Fallback courses
-        setCourses([
-          { id: 'CS202', code: 'CS202', title: 'Database Management Systems', semester: 6 },
-          { id: 'AI204', code: 'AI204', title: 'Artificial Neural Networks', semester: 6 },
-          { id: 'CS301', code: 'CS301', title: 'Computer Networks', semester: 6 },
-          { id: 'AI302', code: 'AI302', title: 'Data Science & Visual Analytics', semester: 6 },
-        ]);
+      } catch (err) {
+        addToast(err.message || 'Could not load courses', 'error', 'Courses Unavailable');
       } finally {
         setLoadingCourses(false);
       }
@@ -73,10 +63,10 @@ export default function UploadMaterial({ onNavigate }) {
     if (!selectedFile?.name) return;
     setClassifying(true);
     try {
-      const res = await api.smartClassify(selectedFile.name, selectedFile.size);
+      const res = await api.smartClassify(selectedFile.name, formatFileSize(selectedFile.size));
       if (res?.classification) {
         const c = res.classification;
-        if (c.suggestedCourseCode) setCourseId(c.suggestedCourseCode);
+        if (c.suggestedCourseCode) selectCourseByCode(c.suggestedCourseCode);
         if (c.unitNumber) setUnitNumber(c.unitNumber);
         if (c.suggestedTopic) setTopic(c.suggestedTopic);
         if (c.suggestedTags) setTags(c.suggestedTags.join(', '));
@@ -89,9 +79,29 @@ export default function UploadMaterial({ onNavigate }) {
     }
   };
 
+  // Course ids are UUIDs; presets and the classifier refer to courses by code.
+  const selectCourseByCode = (code) => {
+    const match = courses.find((c) => c.code === code);
+    if (match) setCourseId(match.id);
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const problem = validatePdfFile(file);
+    if (problem) {
+      addToast(problem, 'warning', 'File Rejected');
+      e.target.value = '';
+      setSelectedFile(null);
+      return;
+    }
+    setSelectedFile(file);
+  };
+
+  // Presets only fill in metadata; the file itself must be chosen by the user.
   const handleSimulatePreset = (presetType) => {
     if (presetType === 'DBMS_NOTES') {
-      setCourseId('CS202');
+      selectCourseByCode('CS202');
       setUnitNumber(3);
       setSemester(6);
       setMaterialType('PDF Notes');
@@ -99,9 +109,8 @@ export default function UploadMaterial({ onNavigate }) {
       setTopic('Relational Database Design, Functional Dependencies & Normalization');
       setSummary('Faculty lecture notes covering 1NF, 2NF, 3NF, BCNF, lossless join decomposition, and minimal cover proofs.');
       setTags('normalization, bcnf, relational-design, 3nf');
-      setSelectedFile({ name: 'DBMS_Unit3_Normalization_BCNF.pdf', size: '4.8 MB', type: 'application/pdf' });
     } else if (presetType === 'DBMS_QP') {
-      setCourseId('CS202');
+      selectCourseByCode('CS202');
       setUnitNumber(3);
       setSemester(6);
       setMaterialType('Question Paper');
@@ -109,9 +118,8 @@ export default function UploadMaterial({ onNavigate }) {
       setTopic('Mid-Term Examination Question Bank & Model Solutions');
       setSummary('Mid-term examination question paper for Database Management Systems covering Units 1 to 3.');
       setTags('question-paper, mid-term, dbms, examination');
-      setSelectedFile({ name: 'DBMS_MidTerm_QP_2024.pdf', size: '2.4 MB', type: 'application/pdf' });
     } else if (presetType === 'ANN_PPT') {
-      setCourseId('AI204');
+      selectCourseByCode('AI204');
       setUnitNumber(2);
       setSemester(6);
       setMaterialType('PPT Presentation');
@@ -119,7 +127,6 @@ export default function UploadMaterial({ onNavigate }) {
       setTopic('Multivariate Chain Rule, Activation Derivatives & Gradient Flow');
       setSummary('Faculty slide deck detailing gradient vector derivations and backpropagation execution.');
       setTags('ann, backpropagation, deep-learning, slides');
-      setSelectedFile({ name: 'ANN_Unit2_Backpropagation.pptx', size: '12.6 MB', type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
     }
     addToast('Loaded representative academic resource metadata preset.', 'info', 'Preset Loaded');
   };
@@ -130,27 +137,31 @@ export default function UploadMaterial({ onNavigate }) {
       addToast('Please provide a resource title.', 'warning', 'Validation Warning');
       return;
     }
+    if (!selectedFile) {
+      addToast('Please choose a PDF file to upload.', 'warning', 'Validation Warning');
+      return;
+    }
+    if (!courseId) {
+      addToast('Please choose a course.', 'warning', 'Validation Warning');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
-      const payload = {
-        title,
-        fileName: selectedFile?.name || title,
-        courseId,
-        unitNumber: Number(unitNumber),
-        semester: Number(semester),
-        materialType,
-        topic,
-        summary,
-        tags: tags.split(',').map((t) => t.trim()).filter(Boolean),
-        accessPermissions,
-        downloadPermitted,
-        size: selectedFile?.size || '4.2 MB',
-        uploadedBy: currentUser?.name || 'Dr. Demo Faculty A',
-      };
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('title', title);
+      formData.append('courseId', courseId);
+      formData.append('unitNumber', String(unitNumber));
+      formData.append('materialType', materialType);
+      formData.append('topic', topic);
+      formData.append('summary', summary);
+      formData.append('tags', tags);
 
-      const res = await api.uploadMaterial(payload);
+      const res = await api.uploadMaterial(formData);
       if (res?.success) {
+        setSelectedFile(null);
+        if (fileInputRef.current) fileInputRef.current.value = '';
         setUploadResult(res.material);
         addToast(
           `Resource "${res.material.title}" indexed and uploaded to department storage.`,
@@ -235,7 +246,7 @@ export default function UploadMaterial({ onNavigate }) {
           <div className="p-2.5 rounded-lg bg-white/80 border border-emerald-200 font-mono text-[11px] text-cloud-700 flex flex-wrap items-center justify-between gap-2">
             <div>
               <span className="text-cloud-400">Object Storage Key: </span>
-              <span className="font-semibold text-brand-700">{uploadResult.storageKey}</span>
+              <span className="font-semibold text-brand-700">{uploadResult.storagePath}</span>
             </div>
             <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 font-sans font-medium">
               Access: {uploadResult.accessPermissions}
@@ -268,24 +279,31 @@ export default function UploadMaterial({ onNavigate }) {
               </button>
             </div>
 
-            <div className="border-2 border-dashed border-cloud-300 hover:border-brand-400 bg-cloud-50/50 hover:bg-brand-50/20 rounded-xl p-5 text-center transition-colors">
+            <label className="block border-2 border-dashed border-cloud-300 hover:border-brand-400 bg-cloud-50/50 hover:bg-brand-50/20 rounded-xl p-5 text-center transition-colors cursor-pointer">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,application/pdf"
+                onChange={handleFileChange}
+                className="sr-only"
+              />
               <div className="w-12 h-12 rounded-xl bg-brand-50 border border-brand-200 text-brand-600 flex items-center justify-center mx-auto mb-2">
                 <FileText className="w-6 h-6" />
               </div>
               <div className="text-xs font-semibold text-cloud-800">
-                {selectedFile?.name || 'Drag and drop course file here, or click to browse'}
+                {selectedFile?.name || 'Click to choose a PDF file'}
               </div>
               <div className="text-[11px] text-cloud-500 mt-0.5">
-                Supported formats: PDF Notes, PPT/PPTX Slides, Question Papers, DOCX, IPYNB (Max: 50 MB)
+                Supported format: PDF only (Max: 10 MB)
               </div>
               {selectedFile && (
                 <div className="mt-3 inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-white border border-cloud-200 text-xs font-mono text-cloud-700">
                   <span className="font-semibold text-brand-700">{selectedFile.name}</span>
                   <span className="text-cloud-400">&bull;</span>
-                  <span>{selectedFile.size}</span>
+                  <span>{formatFileSize(selectedFile.size)}</span>
                 </div>
               )}
-            </div>
+            </label>
           </div>
 
           {/* Academic Organization Fields */}
@@ -324,7 +342,7 @@ export default function UploadMaterial({ onNavigate }) {
                 >
                   {courses.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.code} — {c.title}
+                      {c.code} — {c.title || c.name}
                     </option>
                   ))}
                 </select>
@@ -525,7 +543,7 @@ export default function UploadMaterial({ onNavigate }) {
                 <div className="text-[11px]">
                   <div className="font-semibold text-cloud-900">Object Storage Key Assigned</div>
                   <div className="text-cloud-500 font-mono text-[10px] text-brand-700">
-                    s3://dept-cloud/sem{semester}/{courseId.toLowerCase()}/...
+                    academic-materials/courses/&lt;course-id&gt;/...
                   </div>
                 </div>
               </div>

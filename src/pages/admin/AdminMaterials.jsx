@@ -197,7 +197,7 @@ export default function AdminMaterials({ onNavigate }) {
                   </p>
 
                   <div className="flex items-center gap-2 text-[10px] font-mono text-cloud-400 mt-1 truncate">
-                    <span className="text-brand-600">{mat.storageKey}</span>
+                    <span className="text-brand-600">{mat.storagePath}</span>
                     <span>&bull;</span>
                     <span>{mat.size}</span>
                     <span>&bull;</span>

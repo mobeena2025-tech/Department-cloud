@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { X, Upload, Sparkles, Check, Edit2, FileText, CheckCircle2, ArrowRight } from 'lucide-react';
-import { api } from '../../services/api';
+import { api, validatePdfFile, formatFileSize } from '../../services/api';
 import { useNotification } from '../../context/NotificationContext';
 
 export default function SmartUploadModal({ isOpen, onClose, onUploadSuccess }) {
-  const [fileInputName, setFileInputName] = useState('cnn_final_latest.pdf');
+  const [selectedFile, setSelectedFile] = useState(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [classification, setClassification] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -25,14 +25,23 @@ export default function SmartUploadModal({ isOpen, onClose, onUploadSuccess }) {
 
   if (!isOpen) return null;
 
-  const handleSimulateSelect = async (fileName) => {
-    setFileInputName(fileName);
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const problem = validatePdfFile(file);
+    if (problem) {
+      addToast(problem, 'warning', 'File Rejected');
+      e.target.value = '';
+      return;
+    }
+    setSelectedFile(file);
     setAnalyzing(true);
     setClassification(null);
     setIsEditing(false);
 
     try {
-      const res = await api.smartClassify(fileName, '6.4 MB');
+      // The classifier only looks at the file name and size.
+      const res = await api.smartClassify(file.name, formatFileSize(file.size));
       if (res?.classification) {
         setClassification(res.classification);
         setFormState({
@@ -47,39 +56,33 @@ export default function SmartUploadModal({ isOpen, onClose, onUploadSuccess }) {
         });
       }
     } catch (err) {
-      // Fallback
-      setClassification({
-        suggestedCourse: 'Artificial Neural Networks',
-        suggestedCourseCode: 'AI204',
-        suggestedUnit: 'Unit 3',
-        suggestedTopic: 'Convolutional Neural Networks',
-        suggestedType: 'Lecture Material',
-        suggestedTags: ['CNN', 'convolution', 'pooling', 'feature extraction'],
-        confidence: 0.98,
-      });
+      // No suggestion available: let the user fill the fields in by hand.
+      addToast('Could not classify this file. Please fill in the details.', 'info', 'Manual Entry');
+      setClassification({ confidence: 0 });
+      setIsEditing(true);
     } finally {
       setAnalyzing(false);
     }
   };
 
   const handleAcceptClassification = async () => {
+    if (!selectedFile) {
+      addToast('Please choose a PDF file first.', 'warning', 'No File');
+      return;
+    }
     setSubmitting(true);
     try {
-      const payload = {
-        title: fileInputName,
-        fileName: fileInputName,
-        courseId: formState.courseCode,
-        unitNumber: formState.unitNumber,
-        topic: formState.topic,
-        fileType: 'PDF',
-        size: '6.4 MB',
-        visibility: formState.visibility,
-        tags: formState.tags.split(',').map((t) => t.trim()),
-        uploadedBy: 'Dr. Demo Faculty A',
-      };
+      const formData = new FormData();
+      formData.append('file', selectedFile);
+      formData.append('title', selectedFile.name.replace(/\.pdf$/i, ''));
+      formData.append('courseId', formState.courseCode);
+      formData.append('unitNumber', String(formState.unitNumber || parseInt(String(formState.unit).replace(/\D/g, ''), 10) || 1));
+      formData.append('materialType', formState.type);
+      formData.append('topic', formState.topic);
+      formData.append('tags', formState.tags);
 
-      const res = await api.uploadMaterial(payload);
-      addToast(`Successfully published "${fileInputName}" to ${formState.courseCode} ${formState.unit}!`, 'success', 'Smart Cloud Upload');
+      const res = await api.uploadMaterial(formData);
+      addToast(`Successfully published "${selectedFile.name}" to ${formState.courseCode} ${formState.unit}!`, 'success', 'Smart Cloud Upload');
       if (onUploadSuccess) onUploadSuccess(res.material);
       onClose();
     } catch (err) {
@@ -122,47 +125,20 @@ export default function SmartUploadModal({ isOpen, onClose, onUploadSuccess }) {
           {/* File Picker / Test buttons */}
           <div>
             <label className="block text-xs font-semibold text-cloud-700 mb-1.5">
-              Select or Drop Academic Document:
+              Select Academic Document (PDF, max 10 MB):
             </label>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={fileInputName}
-                onChange={(e) => setFileInputName(e.target.value)}
-                placeholder="e.g. cnn_final_latest.pdf"
-                className="flex-1 px-3 py-2 rounded-xl border border-cloud-200 text-xs text-cloud-900 focus:outline-none focus:border-brand-500 font-mono"
-              />
-              <button
-                onClick={() => handleSimulateSelect(fileInputName)}
-                disabled={analyzing}
-                className="px-4 py-2 rounded-xl bg-cloud-900 hover:bg-cloud-800 text-white text-xs font-medium transition-colors disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
-              >
-                {analyzing ? 'Analyzing...' : 'Analyze Document'}
-              </button>
-            </div>
-
-            {/* Quick Demo Pre-set files */}
-            <div className="flex items-center gap-1.5 mt-2 text-[11px] text-cloud-500">
-              <span>Test presets:</span>
-              <button
-                onClick={() => handleSimulateSelect('cnn_final_latest.pdf')}
-                className="text-brand-600 hover:underline font-mono bg-brand-50 px-2 py-0.5 rounded cursor-pointer"
-              >
-                cnn_final_latest.pdf
-              </button>
-              <button
-                onClick={() => handleSimulateSelect('backprop_derivation_notes.pdf')}
-                className="text-brand-600 hover:underline font-mono bg-brand-50 px-2 py-0.5 rounded cursor-pointer"
-              >
-                backprop_notes.pdf
-              </button>
-              <button
-                onClick={() => handleSimulateSelect('ospf_routing_topology.pdf')}
-                className="text-brand-600 hover:underline font-mono bg-brand-50 px-2 py-0.5 rounded cursor-pointer"
-              >
-                ospf_routing.pdf
-              </button>
-            </div>
+            <input
+              type="file"
+              accept=".pdf,application/pdf"
+              onChange={handleFileChange}
+              disabled={analyzing || submitting}
+              className="block w-full text-xs text-cloud-700 file:mr-3 file:px-4 file:py-2 file:rounded-xl file:border-0 file:bg-cloud-900 file:text-white file:text-xs file:font-medium file:cursor-pointer"
+            />
+            {selectedFile && (
+              <div className="mt-2 text-[11px] text-cloud-500 font-mono">
+                {selectedFile.name} &bull; {formatFileSize(selectedFile.size)}
+              </div>
+            )}
           </div>
 
           {/* AI Analyzing State */}
@@ -189,7 +165,7 @@ export default function SmartUploadModal({ isOpen, onClose, onUploadSuccess }) {
                   </span>
                 </div>
                 <span className="badge-pill bg-brand-100 text-brand-800 text-[10px] font-bold">
-                  {(classification.confidence * 100).toFixed(0)}% Match Confidence
+                  {classification.confidence ? `${(classification.confidence * 100).toFixed(0)}% Match Confidence` : 'Manual Entry'}
                 </span>
               </div>
 
@@ -235,11 +211,11 @@ export default function SmartUploadModal({ isOpen, onClose, onUploadSuccess }) {
                 /* Editable View */
                 <div className="space-y-3 text-xs">
                   <div>
-                    <label className="block text-cloud-600 font-medium mb-1">Course Code & Name</label>
+                    <label className="block text-cloud-600 font-medium mb-1">Course Code</label>
                     <input
                       type="text"
-                      value={formState.course}
-                      onChange={(e) => setFormState({ ...formState, course: e.target.value })}
+                      value={formState.courseCode}
+                      onChange={(e) => setFormState({ ...formState, courseCode: e.target.value.trim().toUpperCase() })}
                       className="w-full px-2.5 py-1.5 rounded-lg border border-cloud-200 bg-white text-cloud-900"
                     />
                   </div>
@@ -249,7 +225,7 @@ export default function SmartUploadModal({ isOpen, onClose, onUploadSuccess }) {
                       <input
                         type="text"
                         value={formState.unit}
-                        onChange={(e) => setFormState({ ...formState, unit: e.target.value })}
+                        onChange={(e) => setFormState({ ...formState, unit: e.target.value, unitNumber: null })}
                         className="w-full px-2.5 py-1.5 rounded-lg border border-cloud-200 bg-white text-cloud-900"
                       />
                     </div>

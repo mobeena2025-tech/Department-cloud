@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
 import { X, Download, ZoomIn, ZoomOut, FileText, CheckCircle2, Shield, Calendar, BookOpen, Layers, Eye } from 'lucide-react';
 import { useNotification } from '../../context/NotificationContext';
+import { api } from '../../services/api';
 
 export default function DocumentPreviewModal({ material, isOpen, onClose }) {
   const [zoom, setZoom] = useState(100);
   const [activeTab, setActiveTab] = useState('preview');
   const [currentPage, setCurrentPage] = useState(1);
+  const [opening, setOpening] = useState(false);
   const { addToast } = useNotification();
 
   if (!isOpen || !material) return null;
 
-  const handleDownload = () => {
+  // Ask the API for a short-lived signed URL and open the PDF in a new tab.
+  const handleDownload = async () => {
     if (material.downloadPermitted === false) {
       addToast(
         `Offline download is restricted for this resource by faculty policy. In-browser inspection only.`,
@@ -20,11 +23,26 @@ export default function DocumentPreviewModal({ material, isOpen, onClose }) {
       return;
     }
 
-    addToast(
-      `Generated time-bound pre-signed token for "${material.title}". Downloading from ${material.storageKey || 'Simulated Private Bucket'}`,
-      'success',
-      'Pre-Signed Object Download'
-    );
+    // Open the tab now (inside the click) so popup blockers allow it,
+    // then point it at the signed URL once we have it.
+    const win = window.open('', '_blank');
+    if (win) win.opener = null;
+    setOpening(true);
+    try {
+      const res = await api.getMaterial(material.id);
+      const url = res?.material?.fileUrl;
+      if (!url) throw new Error('No file is stored for this material.');
+      if (win) {
+        win.location.href = url;
+      } else {
+        window.location.href = url;
+      }
+    } catch (err) {
+      if (win) win.close();
+      addToast(err.message || 'Could not open the file.', 'error', 'Open Failed');
+    } finally {
+      setOpening(false);
+    }
   };
 
   const totalPages = material.pages || 38;
@@ -60,6 +78,7 @@ export default function DocumentPreviewModal({ material, isOpen, onClose }) {
           <div className="flex items-center gap-2">
             <button
               onClick={handleDownload}
+              disabled={opening}
               className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium shadow-xs transition-colors cursor-pointer ${
                 material.downloadPermitted === false
                   ? 'bg-cloud-200 text-cloud-600 hover:bg-cloud-300'
@@ -67,7 +86,7 @@ export default function DocumentPreviewModal({ material, isOpen, onClose }) {
               }`}
             >
               <Download className="w-3.5 h-3.5" />
-              {material.downloadPermitted === false ? 'Download Restricted' : 'Download File'}
+              {material.downloadPermitted === false ? 'Download Restricted' : opening ? 'Opening...' : 'Open / Download'}
             </button>
             <button
               onClick={onClose}
@@ -209,7 +228,7 @@ export default function DocumentPreviewModal({ material, isOpen, onClose }) {
                   </div>
                   <div className="p-3 rounded-lg bg-cloud-50 border border-cloud-200">
                     <span className="text-cloud-500 block mb-1">Object Storage Key</span>
-                    <span className="font-mono text-[11px] font-semibold text-brand-700 break-all">{material.storageKey || `s3://dept-cloud/materials/${material.id}`}</span>
+                    <span className="font-mono text-[11px] font-semibold text-brand-700 break-all">{material.storagePath || "No file stored"}</span>
                     <span className="text-[10px] text-cloud-400 block mt-0.5">{material.storageStatus || 'Simulated Private Object Storage'}</span>
                   </div>
                   <div className="p-3 rounded-lg bg-cloud-50 border border-cloud-200">

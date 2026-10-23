@@ -5,14 +5,36 @@
 
 const API_BASE = '/api';
 
+export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // must match the server limit
+
+// Returns an error message, or null if the file is an acceptable PDF.
+export function validatePdfFile(file) {
+  if (!file) return 'Please choose a file.';
+  if (file.type !== 'application/pdf' || !file.name.toLowerCase().endsWith('.pdf')) {
+    return 'Only PDF files are allowed.';
+  }
+  if (file.size > MAX_UPLOAD_BYTES) return 'File is larger than 10 MB.';
+  return null;
+}
+
+export function formatFileSize(bytes) {
+  if (typeof bytes !== 'number') return bytes || '';
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 export async function fetchApi(endpoint, options = {}) {
   try {
+    // Let the browser set the multipart boundary for FormData bodies.
+    const isFormData = typeof FormData !== 'undefined' && options.body instanceof FormData;
+    const token = localStorage.getItem('dac_auth_token');
     const res = await fetch(`${API_BASE}${endpoint}`, {
+      ...options,
       headers: {
-        'Content-Type': 'application/json',
+        ...(isFormData ? {} : { 'Content-Type': 'application/json' }),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(options.headers || {}),
       },
-      ...options,
     });
 
     if (!res.ok) {
@@ -47,7 +69,7 @@ export const api = {
     return fetchApi(`/materials${qs ? `?${qs}` : ''}`);
   },
   getMaterial: (id) => fetchApi(`/materials/${id}`),
-  uploadMaterial: (data) => fetchApi('/materials', { method: 'POST', body: JSON.stringify(data) }),
+  uploadMaterial: (formData) => fetchApi('/materials', { method: 'POST', body: formData }),
   updateMaterial: (id, data) => fetchApi(`/materials/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteMaterial: (id) => fetchApi(`/materials/${id}`, { method: 'DELETE' }),
   smartClassify: (fileName, fileSize) => 
