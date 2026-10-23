@@ -18,19 +18,18 @@ import {
 } from 'lucide-react';
 import { api } from '../../services/api';
 import DocumentPreviewModal from '../../components/common/DocumentPreviewModal';
-import { useAuth } from '../../context/AuthContext';
+import { useNotification } from '../../context/NotificationContext';
 
 const SUGGESTED_QUERIES = [
-  'Find DBMS Unit 3 material.',
-  'Show my recent assignments.',
-  'Find the uploaded notes for this subject.',
-  'What is backpropagation in ANN Unit 2?',
-  'Which document explains CNN pooling?',
+  'Find DBMS unit 3 material',
+  'Show my upcoming assignments',
+  'Normalization notes',
+  'Which document covers CNN pooling?',
 ];
 
 export default function AcademicAssistant() {
-  const { currentUser } = useAuth();
-  const [query, setQuery] = useState('Find DBMS Unit 3 material.');
+  const { addToast } = useNotification();
+  const [query, setQuery] = useState('Find DBMS unit 3 material');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [selectedMaterial, setSelectedMaterial] = useState(null);
@@ -44,63 +43,29 @@ export default function AcademicAssistant() {
     setResult(null);
     setPipelineStep(1); // User Query
 
-    setTimeout(() => setPipelineStep(2), 200); // Semantic Vector Retrieval
+    setTimeout(() => setPipelineStep(2), 200); // Keyword match
     setTimeout(() => setPipelineStep(3), 400); // Department Filtering
 
     try {
-      const res = await api.searchAI(q, {
-        userRole: currentUser?.role,
-        userName: currentUser?.name,
-      });
+      const res = await api.searchAI(q);
 
       setTimeout(() => {
-        setPipelineStep(4); // Grounded Answer
+        setPipelineStep(4); // Results
         setResult(res);
         setLoading(false);
       }, 600);
     } catch (err) {
       setLoading(false);
+      addToast(err.message || 'Search failed', 'error', 'Assistant');
     }
   };
 
   const handlePreviewSource = async (source) => {
     try {
       const res = await api.getMaterial(source.materialId);
-      if (res?.material) {
-        setSelectedMaterial(res.material);
-      } else {
-        setSelectedMaterial({
-          id: source.materialId,
-          title: source.title,
-          courseName: source.course,
-          courseId: source.courseCode,
-          unitTitle: source.unit,
-          summary: source.excerpt,
-          fileType: 'PDF',
-          materialType: 'PDF Notes',
-          size: '4.8 MB',
-          uploadedBy: 'Faculty Member',
-          storageKey: `s3://dept-academic-cloud-cse/materials/${source.courseCode.toLowerCase()}/${source.title}`,
-          accessPermissions: 'Department Enrolled Only',
-          downloadPermitted: true,
-        });
-      }
-    } catch {
-      setSelectedMaterial({
-        id: source.materialId,
-        title: source.title,
-        courseName: source.course,
-        courseId: source.courseCode,
-        unitTitle: source.unit,
-        summary: source.excerpt,
-        fileType: 'PDF',
-        materialType: 'PDF Notes',
-        size: '4.8 MB',
-        uploadedBy: 'Faculty Member',
-        storageKey: `s3://dept-academic-cloud-cse/materials/${source.courseCode.toLowerCase()}/${source.title}`,
-        accessPermissions: 'Department Enrolled Only',
-        downloadPermitted: true,
-      });
+      if (res?.material) setSelectedMaterial(res.material);
+    } catch (err) {
+      addToast(err.message || 'Could not open this material', 'error', 'Open Failed');
     }
   };
 
@@ -113,11 +78,11 @@ export default function AcademicAssistant() {
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-bold text-cloud-900">Intelligent Academic Assistant</h1>
             <span className="badge-pill bg-brand-50 text-brand-700 border border-brand-200 text-[10px]">
-              Cloud-Native Secondary Feature
+              Prototype
             </span>
           </div>
           <p className="text-xs text-cloud-500 mt-0.5">
-            Grounded assistant querying indexed departmental course syllabi, lecture notes, and assignment deadlines
+            Finds materials and assignments in your own courses
           </p>
         </div>
       </div>
@@ -126,8 +91,9 @@ export default function AcademicAssistant() {
       <div className="p-3.5 rounded-xl bg-brand-50/70 border border-brand-200 text-xs text-brand-900 flex items-start gap-2.5">
         <Info className="w-4 h-4 text-brand-600 flex-shrink-0 mt-0.5" />
         <div className="leading-relaxed text-[11px]">
-          <strong className="font-semibold text-brand-950">Grounded Academic Assistant (Prototype Demonstration): </strong>
-          Answers are synthesized directly from uploaded faculty resources and department curriculum records in our simulated object catalog. Designed to assist students and mentors with rapid resource lookup and curriculum cross-referencing.
+          <strong className="font-semibold text-brand-950">Prototype: </strong>
+          This assistant searches the titles, topics and descriptions of materials and assignments in the courses you
+          are enrolled in or teach. It matches words; it does not read inside PDFs and does not write answers.
         </div>
       </div>
 
@@ -191,16 +157,13 @@ export default function AcademicAssistant() {
         </div>
       </div>
 
-      {/* RAG Retrieval Pipeline Visualizer */}
+      {/* How the search works */}
       {(loading || result) && (
         <div className="cloud-card p-4 border-brand-100 bg-gradient-to-r from-cloud-50 via-brand-50/20 to-cloud-50">
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-bold uppercase tracking-wider text-cloud-500 flex items-center gap-1.5">
               <Layers className="w-4 h-4 text-brand-600" />
-              Retrieval-Augmented Generation (RAG) Architecture
-            </span>
-            <span className="badge-pill bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px] font-bold">
-              Department Verified
+              How this search works
             </span>
           </div>
 
@@ -209,7 +172,7 @@ export default function AcademicAssistant() {
               pipelineStep >= 1 ? 'bg-white border-brand-300 shadow-2xs' : 'bg-cloud-100/50 border-cloud-200 opacity-60'
             }`}>
               <div className="flex items-center justify-between mb-0.5">
-                <span className="font-bold text-cloud-900">1. Query Parsing</span>
+                <span className="font-bold text-cloud-900">1. Your Question</span>
                 {pipelineStep >= 1 && <CheckCircle2 className="w-3.5 h-3.5 text-brand-600" />}
               </div>
               <p className="text-cloud-500 text-[10px] truncate">"{query}"</p>
@@ -219,10 +182,10 @@ export default function AcademicAssistant() {
               pipelineStep >= 2 ? 'bg-white border-brand-300 shadow-2xs' : 'bg-cloud-100/50 border-cloud-200 opacity-60'
             }`}>
               <div className="flex items-center justify-between mb-0.5">
-                <span className="font-bold text-cloud-900">2. Vector Search</span>
+                <span className="font-bold text-cloud-900">2. Keyword Match</span>
                 {pipelineStep >= 2 && <CheckCircle2 className="w-3.5 h-3.5 text-brand-600" />}
               </div>
-              <p className="text-cloud-500 text-[10px]">Cosine Similarity Matching</p>
+              <p className="text-cloud-500 text-[10px]">Titles, topics, descriptions</p>
             </div>
 
             <div className={`p-2.5 rounded-xl border transition-all ${
@@ -232,23 +195,23 @@ export default function AcademicAssistant() {
                 <span className="font-bold text-cloud-900">3. Enrolled Filter</span>
                 {pipelineStep >= 3 && <CheckCircle2 className="w-3.5 h-3.5 text-brand-600" />}
               </div>
-              <p className="text-cloud-500 text-[10px]">Permission Checked</p>
+              <p className="text-cloud-500 text-[10px]">Only your courses</p>
             </div>
 
             <div className={`p-2.5 rounded-xl border transition-all ${
               pipelineStep >= 4 ? 'bg-white border-brand-300 shadow-2xs' : 'bg-cloud-100/50 border-cloud-200 opacity-60'
             }`}>
               <div className="flex items-center justify-between mb-0.5">
-                <span className="font-bold text-cloud-900">4. Grounded Synthesis</span>
+                <span className="font-bold text-cloud-900">4. Results</span>
                 {pipelineStep >= 4 && <CheckCircle2 className="w-3.5 h-3.5 text-brand-600" />}
               </div>
-              <p className="text-cloud-500 text-[10px]">Curriculum References</p>
+              <p className="text-cloud-500 text-[10px]">Ranked by matches</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Answer & Grounded Citations */}
+      {/* Results */}
       {result && (
         <div className="space-y-4 animate-in fade-in duration-200">
           
@@ -260,13 +223,13 @@ export default function AcademicAssistant() {
                   <Sparkles className="w-4 h-4" />
                 </div>
                 <div>
-                  <h2 className="text-xs font-bold text-cloud-900">Department Assistant Response</h2>
-                  <span className="text-[10px] text-cloud-500">Synthesized from authorized faculty lecture notes</span>
+                  <h2 className="text-xs font-bold text-cloud-900">Search Results</h2>
+                  <span className="text-[10px] text-cloud-500">Keyword search over your courses</span>
                 </div>
               </div>
 
               <span className="badge-pill bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px]">
-                Grounded in Department Catalog
+                Your courses only
               </span>
             </div>
 
@@ -295,12 +258,12 @@ export default function AcademicAssistant() {
             )}
           </div>
 
-          {/* Grounded Source Citations */}
+          {/* Matching materials */}
           {result.sources?.length > 0 && (
             <div className="cloud-card p-5 space-y-3">
               <h3 className="text-xs font-bold text-cloud-900 uppercase tracking-wider text-cloud-400 flex items-center gap-1.5">
                 <BookOpen className="w-4 h-4 text-brand-600" />
-                Cited Academic Department Sources ({result.sources.length})
+                Matching Materials ({result.sources.length})
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -337,11 +300,31 @@ export default function AcademicAssistant() {
                       className="mt-3 w-full py-1.5 rounded-lg bg-white border border-cloud-200 hover:bg-brand-50 hover:text-brand-700 text-cloud-700 text-xs font-semibold shadow-2xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <FileText className="w-3.5 h-3.5 text-brand-600" />
-                      <span>Inspect Notes</span>
+                      <span>Open</span>
                     </button>
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Matching assignments */}
+          {result.assignments?.length > 0 && (
+            <div className="cloud-card p-5 space-y-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-cloud-400">
+                Assignments ({result.assignments.length})
+              </h3>
+              {result.assignments.map((a) => (
+                <div key={a.id} className="flex items-center justify-between text-xs p-2.5 rounded-lg border border-cloud-200">
+                  <span>
+                    <span className="font-mono font-bold text-brand-700 mr-2">{a.courseCode}</span>
+                    <span className="font-semibold text-cloud-900">{a.title}</span>
+                  </span>
+                  <span className={a.overdue ? 'text-rose-700 font-semibold' : 'text-cloud-600'}>
+                    Due {new Date(a.dueDate).toLocaleString()}
+                  </span>
+                </div>
+              ))}
             </div>
           )}
 

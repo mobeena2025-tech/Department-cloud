@@ -1,15 +1,41 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, CheckCircle2, FileText, Download, Award, MessageSquare } from 'lucide-react';
 import { api } from '../../services/api';
 import { useNotification } from '../../context/NotificationContext';
 
 export default function GradeSubmissionModal({ submission, isOpen, onClose, onGraded }) {
   const { addToast } = useNotification();
-  const [grade, setGrade] = useState(submission?.grade || 23);
-  const [feedback, setFeedback] = useState(
-    submission?.feedback || 'Good formulation of vectorized backprop routines. Numerical gradients match theoretical derivatives.'
-  );
+  const [grade, setGrade] = useState('');
+  const [feedback, setFeedback] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [opening, setOpening] = useState(false);
+
+  // Start from this submission's saved grade/feedback (blank if ungraded).
+  useEffect(() => {
+    setGrade(submission?.grade ?? '');
+    setFeedback(submission?.feedback ?? '');
+  }, [submission?.id]);
+
+  const maxMarks = submission?.maxMarks || 100;
+
+  // Open the student's PDF through a short-lived signed link.
+  const handleOpenFile = async () => {
+    const win = window.open('', '_blank');
+    if (win) win.opener = null;
+    setOpening(true);
+    try {
+      const res = await api.getSubmission(submission.id);
+      const url = res?.submission?.fileUrl;
+      if (!url) throw new Error('No file was uploaded with this submission.');
+      if (win) win.location.href = url;
+      else window.location.href = url;
+    } catch (err) {
+      if (win) win.close();
+      addToast(err.message, 'error', 'Open Failed');
+    } finally {
+      setOpening(false);
+    }
+  };
 
   if (!isOpen || !submission) return null;
 
@@ -20,9 +46,8 @@ export default function GradeSubmissionModal({ submission, isOpen, onClose, onGr
       const res = await api.gradeSubmission(submission.id, {
         grade: Number(grade),
         feedback,
-        gradedBy: 'Dr. Demo Faculty A',
       });
-      addToast(`Graded submission for ${submission.studentName}: ${grade}/${submission.maxMarks || 25}`, 'success', 'Gradebook Updated');
+      addToast(`Graded submission for ${submission.studentName}: ${grade}/${maxMarks}`, 'success', 'Gradebook Updated');
       if (onGraded) onGraded(res.submission);
       onClose();
     } catch (err) {
@@ -61,26 +86,29 @@ export default function GradeSubmissionModal({ submission, isOpen, onClose, onGr
           <div className="p-3 rounded-xl bg-cloud-50 border border-cloud-200 space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-cloud-500">Submitted Artifact:</span>
-              <span className="font-mono font-semibold text-brand-700">
-                {submission.fileName || 'ANN_Assignment2_DEMO-ROLL.pdf'}
-              </span>
+              {submission.hasFile ? (
+                <button
+                  type="button"
+                  onClick={handleOpenFile}
+                  disabled={opening}
+                  className="font-mono font-semibold text-brand-700 underline cursor-pointer"
+                >
+                  {opening ? 'Opening...' : submission.fileName || 'Open PDF'}
+                </button>
+              ) : (
+                <span className="text-cloud-500">No file (written answer)</span>
+              )}
             </div>
             <div className="flex items-center justify-between">
               <span className="text-cloud-500">Submission Timestamp:</span>
-              <span className="text-cloud-800">{new Date(submission.submittedAt || Date.now()).toLocaleString()}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-cloud-500">File Verification:</span>
-              <span className="badge-pill bg-emerald-50 text-emerald-700 border border-emerald-200">
-                SHA-256 Validated
-              </span>
+              <span className="text-cloud-800">{submission.submittedAt ? new Date(submission.submittedAt).toLocaleString() : '—'}</span>
             </div>
           </div>
 
           <div>
             <label className="block font-semibold text-cloud-700 mb-1">Student Notes / Summary:</label>
             <div className="p-3 rounded-xl bg-cloud-50/50 border border-cloud-200 text-cloud-700 text-xs font-mono">
-              {submission.submissionText || 'Implemented multi-layer perceptron from scratch in NumPy with Adam optimizer and numerical gradient verification.'}
+              {submission.submissionText || 'No written notes.'}
             </div>
           </div>
 
@@ -88,16 +116,16 @@ export default function GradeSubmissionModal({ submission, isOpen, onClose, onGr
             <div>
               <div className="flex items-center justify-between mb-1">
                 <label className="font-semibold text-cloud-700">
-                  Awarded Score (Max: {submission.maxMarks || 25})
+                  Awarded Score (Max: {maxMarks})
                 </label>
                 <span className="text-xs font-bold text-brand-600">
-                  {((grade / (submission.maxMarks || 25)) * 100).toFixed(0)}%
+                  {grade === '' ? '—' : `${((Number(grade) / maxMarks) * 100).toFixed(0)}%`}
                 </span>
               </div>
               <input
                 type="number"
                 min={0}
-                max={submission.maxMarks || 25}
+                max={maxMarks}
                 required
                 value={grade}
                 onChange={(e) => setGrade(e.target.value)}

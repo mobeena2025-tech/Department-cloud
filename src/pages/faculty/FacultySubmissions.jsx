@@ -92,7 +92,7 @@ export default function FacultySubmissions() {
           <div className="flex items-center gap-4 text-xs">
             <div className="text-center p-2.5 rounded-lg bg-white border border-brand-200">
               <span className="text-cloud-400 block text-[10px] uppercase font-bold">Enrolled</span>
-              <span className="font-bold text-cloud-900 text-sm">{currentAssignment.totalEnrolled || 68}</span>
+              <span className="font-bold text-cloud-900 text-sm">{currentAssignment.totalEnrolled}</span>
             </div>
             <div className="text-center p-2.5 rounded-lg bg-white border border-brand-200">
               <span className="text-cloud-400 block text-[10px] uppercase font-bold">Turned In</span>
@@ -176,7 +176,7 @@ export default function FacultySubmissions() {
                     <td className="py-3.5 px-6 text-center font-mono">
                       {sub.grade !== null && sub.grade !== undefined ? (
                         <span className="font-bold text-emerald-700">
-                          {sub.grade} / {sub.maxMarks || 25}
+                          {sub.grade} / {sub.maxMarks}
                         </span>
                       ) : (
                         <span className="text-cloud-400">—</span>

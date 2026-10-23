@@ -126,15 +126,6 @@ export default function CourseDetail({ courseId = 'AI204', onNavigate }) {
 
           <div className="flex items-center gap-2 flex-shrink-0">
             <button
-              onClick={() => {
-                addToast(`Official syllabus for ${course.code} downloaded`, 'success', 'Academic Syllabus');
-              }}
-              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-cloud-200 hover:bg-cloud-50 text-cloud-700 text-xs font-medium transition-colors cursor-pointer"
-            >
-              <Download className="w-3.5 h-3.5" />
-              Download Syllabus PDF
-            </button>
-            <button
               onClick={() => onNavigate('/ai-search')}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
             >

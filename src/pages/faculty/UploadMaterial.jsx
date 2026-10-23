@@ -63,16 +63,18 @@ export default function UploadMaterial({ onNavigate }) {
     setClassifying(true);
     try {
       const res = await api.smartClassify(selectedFile.name, formatFileSize(selectedFile.size));
-      if (res?.classification) {
-        const c = res.classification;
+      const c = res?.classification;
+      if (!c || c.method === 'none') {
+        addToast('No suggestion for this file name. Please fill in the details.', 'info', 'Auto-Classify');
+      } else {
         if (c.suggestedCourseCode) selectCourseByCode(c.suggestedCourseCode);
         if (c.unitNumber) setUnitNumber(c.unitNumber);
         if (c.suggestedTopic) setTopic(c.suggestedTopic);
-        if (c.suggestedTags) setTags(c.suggestedTags.join(', '));
-        addToast(`Smart classified based on syllabus matching: ${c.suggestedCourse}`, 'success', 'Classifier Aligned');
+        if (c.suggestedTags?.length) setTags(c.suggestedTags.join(', '));
+        addToast(`Suggested from the file name: ${c.suggestedCourse}. Please check before publishing.`, 'success', 'Auto-Classify');
       }
     } catch (err) {
-      addToast('Classification fallback applied based on file metadata.', 'info', 'Classifier Notice');
+      addToast(err.message || 'Auto-classify failed', 'error', 'Auto-Classify');
     } finally {
       setClassifying(false);
     }

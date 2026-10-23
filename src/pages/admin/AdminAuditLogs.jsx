@@ -151,7 +151,7 @@ export default function AdminAuditLogs() {
 
                   <div className="flex items-center gap-3 self-end sm:self-center flex-shrink-0">
                     <span className="text-[10px] font-mono text-cloud-400 hidden md:inline">
-                      IP: {log.ipAddress || '10.20.44.112'}
+                      IP: {log.ipAddress || '—'}
                     </span>
                     <span className={`badge-pill text-xs font-mono font-bold ${
                       isDenied

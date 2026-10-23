@@ -13,7 +13,10 @@ export function toUserResponse(profile) {
     rollNo: profile.roll_number,
     semester: profile.semester,
     section: profile.section,
-    cgpa: profile.cgpa,
+    cgpa: profile.cgpa === null || profile.cgpa === undefined ? null : Number(profile.cgpa),
+    empId: profile.emp_id ?? null,
+    designation: profile.designation ?? null,
+    status: 'Active',
   };
 }
 

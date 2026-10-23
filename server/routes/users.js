@@ -1,89 +1,104 @@
 import express from 'express';
-import { store, recordAuditLog } from '../data/store.js';
-import { requireRole } from '../lib/auth.js';
+import supabase from '../supabase.js';
+import { requireRole, toUserResponse } from '../lib/auth.js';
+import { recordAuditLog } from '../lib/audit.js';
+import { visibleCourseIds } from '../lib/access.js';
+import { HttpError, asyncHandler, optionalInt, optionalString, requiredString } from '../lib/validate.js';
 
 const router = express.Router();
 
-// User management is admin-only.
-router.use(requireRole('admin'));
+const ROLES = ['admin', 'faculty', 'student'];
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// List users with role filter
-router.get('/', (req, res) => {
-  const { role, department, status, query } = req.query;
+function dbError(context, error) {
+  console.error(`${context}:`, error.message);
+  return new HttpError(500, 'Database error');
+}
 
-  let list = [...store.users];
+// Admin: every account. Faculty: students enrolled in courses they teach.
+router.get('/', requireRole('admin', 'faculty'), asyncHandler(async (req, res) => {
+  const role = optionalString(req.query.role, 'role', { max: 10 })?.toLowerCase();
+  if (role && !ROLES.includes(role)) throw new HttpError(400, `role must be one of ${ROLES.join(', ')}`);
+  const search = optionalString(req.query.query, 'query', { max: 100 })?.toLowerCase();
 
-  if (role) {
-    list = list.filter(u => u.role.toLowerCase() === role.toLowerCase());
+  let query = supabase.from('profiles').select('*').order('role').order('full_name');
+
+  if (req.user.role === 'faculty') {
+    if (role && role !== 'student') return res.json({ success: true, users: [] });
+    const taught = await visibleCourseIds(req.user);
+    if (!taught.length) return res.json({ success: true, users: [] });
+    const { data: rows, error } = await supabase.from('enrollments').select('student_id').in('course_id', taught);
+    if (error) throw dbError('Enrollment lookup error', error);
+    const ids = [...new Set(rows.map((r) => r.student_id))];
+    if (!ids.length) return res.json({ success: true, users: [] });
+    query = query.in('id', ids).eq('role', 'student');
+  } else if (role) {
+    query = query.eq('role', role);
   }
 
-  if (department) {
-    list = list.filter(u => u.department.toLowerCase().includes(department.toLowerCase()));
-  }
+  const { data, error } = await query;
+  if (error) throw dbError('Users list error', error);
 
-  if (status) {
-    list = list.filter(u => u.status.toLowerCase() === status.toLowerCase());
-  }
-
-  if (query) {
-    const q = query.toLowerCase();
-    list = list.filter(u => 
-      u.name.toLowerCase().includes(q) ||
-      u.email.toLowerCase().includes(q) ||
-      (u.rollNo && u.rollNo.toLowerCase().includes(q)) ||
-      (u.empId && u.empId.toLowerCase().includes(q))
+  let users = data.map(toUserResponse);
+  if (search) {
+    users = users.filter((u) =>
+      [u.name, u.email, u.rollNo, u.empId].some((v) => v && v.toLowerCase().includes(search))
     );
   }
+  res.json({ success: true, users });
+}));
 
-  res.json({ success: true, users: list });
-});
+// Create an account (admin only): a Supabase Auth user + its profile.
+router.post('/', requireRole('admin'), asyncHandler(async (req, res) => {
+  const body = req.body || {};
+  const name = requiredString(body.name, 'name', { max: 120 });
+  const email = requiredString(body.email, 'email', { max: 200, pattern: EMAIL_PATTERN }).toLowerCase();
+  const role = requiredString(body.role, 'role', { max: 10 }).toLowerCase();
+  if (!ROLES.includes(role)) throw new HttpError(400, `role must be one of ${ROLES.join(', ')}`);
+  const password = requiredString(body.password, 'password', { max: 72 });
+  if (password.length < 8) throw new HttpError(400, 'password must be at least 8 characters');
 
-// Create new user (Admin only)
-router.post('/', (req, res) => {
-  const { name, email, role, department, rollNo, empId, designation, semester, section } = req.body;
-
-  if (!name || !email || !role) {
-    return res.status(400).json({ success: false, message: 'Name, email, and role are required' });
-  }
-
-  const existing = store.users.find(u => u.email.toLowerCase() === email.toLowerCase());
-  if (existing) {
-    return res.status(409).json({ success: false, message: 'User with this email already exists' });
-  }
-
-  const newUser = {
-    id: `usr_${role}_${Date.now()}`,
-    name,
+  const isStudent = role === 'student';
+  const profile = {
+    full_name: name,
     email,
     role,
-    department: department || 'CSE - AI & ML',
-    rollNo: role === 'student' ? (rollNo || `160121733${Math.floor(100 + Math.random() * 900)}`) : null,
-    empId: role !== 'student' ? (empId || `FAC-${Math.floor(100 + Math.random() * 900)}`) : null,
-    designation: designation || (role === 'faculty' ? 'Assistant Professor' : 'Student'),
-    semester: role === 'student' ? (Number(semester) || 6) : null,
-    section: section || 'A',
-    cgpa: role === 'student' ? 8.50 : null,
-    creditsCompleted: role === 'student' ? 114 : null,
-    enrolledCourses: role === 'student' ? ['AI204', 'CS301', 'CS202'] : [],
-    coursesTaught: role === 'faculty' ? ['AI204'] : [],
-    status: 'Active',
-    createdAt: new Date().toISOString(),
+    department: optionalString(body.department, 'department', { max: 100 }) ?? 'CSE - AI & ML',
+    roll_number: isStudent ? optionalString(body.rollNo, 'rollNo', { max: 30 }) ?? null : null,
+    semester: isStudent ? optionalInt(body.semester, 'semester', { min: 1, max: 8 }) ?? null : null,
+    section: isStudent ? optionalString(body.section, 'section', { max: 2 }) ?? null : null,
+    emp_id: !isStudent ? optionalString(body.empId, 'empId', { max: 30 }) ?? null : null,
+    designation: !isStudent ? optionalString(body.designation, 'designation', { max: 60 }) ?? null : null,
   };
 
-  store.users.unshift(newUser);
+  const { data: created, error: authError } = await supabase.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
+  if (authError) {
+    if (/already/i.test(authError.message)) throw new HttpError(409, 'An account with this email already exists');
+    console.error('Create auth user error:', authError.message);
+    throw new HttpError(400, 'Could not create the account');
+  }
 
-  recordAuditLog({
-    actorName: req.user.name,
-    actorRole: req.user.role,
-    actorEmail: req.user.email,
+  const { data, error } = await supabase
+    .from('profiles')
+    .insert({ id: created.user.id, ...profile })
+    .select()
+    .single();
+  if (error) {
+    await supabase.auth.admin.deleteUser(created.user.id); // keep auth and profiles in sync
+    throw dbError('Profile insert error', error);
+  }
+
+  recordAuditLog(req, {
     action: 'CREATE_USER',
     resource: `${name} (${email}) - ${role}`,
-    status: 'SUCCESS',
-    severity: 'INFO',
-    details: `Admin provisioned new ${role} account.`,
+    details: `Admin created a ${role} account.`,
   });
 
-  res.status(201).json({ success: true, user: newUser });
-});
+  res.status(201).json({ success: true, user: toUserResponse(data) });
+}));
 
 export default router;

@@ -10,12 +10,13 @@ export default function AddUserModal({ isOpen, onClose, onUserAdded }) {
     name: '',
     email: '',
     role: 'student',
-    department: 'CSE - Artificial Intelligence & Machine Learning',
-    rollNo: 'DEMO-ROLL',
-    empId: 'FAC-AI-108',
+    password: '',
+    department: 'CSE - AI & ML',
+    rollNo: '',
+    empId: '',
     semester: 6,
     section: 'A',
-    designation: 'Assistant Professor',
+    designation: '',
   });
 
   if (!isOpen) return null;
@@ -26,12 +27,17 @@ export default function AddUserModal({ isOpen, onClose, onUserAdded }) {
       addToast('Name and email are required', 'error');
       return;
     }
+    if (formData.password.length < 8) {
+      addToast('Initial password must be at least 8 characters', 'error');
+      return;
+    }
 
     setSubmitting(true);
     try {
       const res = await api.createUser(formData);
       addToast(`Provisioned ${formData.role} account for ${formData.name}!`, 'success', 'User Management');
       if (onUserAdded) onUserAdded(res.user);
+      setFormData((f) => ({ ...f, name: '', email: '', password: '', rollNo: '', empId: '' }));
       onClose();
     } catch (err) {
       addToast(err.message, 'error', 'Creation Failed');
@@ -113,6 +119,21 @@ export default function AddUserModal({ isOpen, onClose, onUserAdded }) {
               placeholder="e.g. demo.user@example.edu"
               className="w-full px-3 py-2 rounded-xl border border-cloud-200 text-cloud-900 focus:outline-none focus:border-brand-500"
             />
+          </div>
+
+          <div>
+            <label className="block font-semibold text-cloud-700 mb-1">Initial Password</label>
+            <input
+              type="password"
+              required
+              minLength={8}
+              autoComplete="new-password"
+              value={formData.password}
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+              placeholder="At least 8 characters"
+              className="w-full px-3 py-2 rounded-xl border border-cloud-200 text-cloud-900 focus:outline-none focus:border-brand-500"
+            />
+            <p className="text-[11px] text-cloud-400 mt-1">Share it with the user privately.</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

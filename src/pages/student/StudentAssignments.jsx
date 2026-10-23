@@ -10,7 +10,7 @@ import {
   X,
   Send
 } from 'lucide-react';
-import { api } from '../../services/api';
+import { api, validatePdfFile, formatFileSize } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 
@@ -21,7 +21,7 @@ export default function StudentAssignments() {
   const [submissions, setSubmissions] = useState([]);
   const [activeTab, setActiveTab] = useState('pending'); // 'pending' | 'submitted'
   const [submittingAssignment, setSubmittingAssignment] = useState(null);
-  const [uploadFileName, setUploadFileName] = useState('ANN_Assignment2_DEMO-ROLL.pdf');
+  const [uploadFile, setUploadFile] = useState(null); // optional PDF
   const [submissionNotes, setSubmissionNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -30,7 +30,7 @@ export default function StudentAssignments() {
     try {
       const [aRes, sRes] = await Promise.all([
         api.getAssignments(),
-        api.getSubmissions({ studentId: currentUser?.id }),
+        api.getSubmissions(), // the server returns only this student's own submissions
       ]);
       if (aRes?.assignments) setAssignments(aRes.assignments);
       if (sRes?.submissions) setSubmissions(sRes.submissions);
@@ -46,16 +46,20 @@ export default function StudentAssignments() {
   const handleSubmitSolution = async (e) => {
     e.preventDefault();
     if (!submittingAssignment) return;
+    if (!uploadFile && !submissionNotes.trim()) {
+      addToast('Attach a PDF or write a short answer.', 'warning', 'Nothing to Submit');
+      return;
+    }
 
     setIsSubmitting(true);
     try {
-      await api.submitAssignment({
-        assignmentId: submittingAssignment.id,
-        studentId: currentUser?.id,
-        fileName: uploadFileName,
-        fileSize: '3.4 MB',
-        submissionText: submissionNotes || 'Completed implementation and test suite verification.',
-      });
+      const formData = new FormData();
+      formData.append('assignmentId', submittingAssignment.id);
+      if (submissionNotes.trim()) formData.append('submissionText', submissionNotes.trim());
+      if (uploadFile) formData.append('file', uploadFile);
+      await api.submitAssignment(formData);
+      setUploadFile(null);
+      setSubmissionNotes('');
 
       addToast(`Work submitted for "${submittingAssignment.title}"!`, 'success', 'Assignment Submitted');
       setSubmittingAssignment(null);
@@ -188,7 +192,7 @@ export default function StudentAssignments() {
                     </h3>
 
                     <p className="text-xs text-cloud-600 mt-1 font-mono">
-                      Uploaded File: <strong className="text-cloud-800">{sub.fileName}</strong> ({sub.fileSize || '3.4 MB'})
+                      {sub.fileName ? <>Uploaded File: <strong className="text-cloud-800">{sub.fileName}</strong>{sub.fileSize ? ` (${sub.fileSize})` : ''}</> : 'Written answer (no file)'}
                     </p>
 
                     {sub.submissionText && (
@@ -208,7 +212,7 @@ export default function StudentAssignments() {
                         <span className="text-2xl font-black text-emerald-700 font-mono">
                           {sub.grade}
                         </span>
-                        <span className="text-xs text-cloud-400 font-mono"> / {sub.maxMarks || 25}</span>
+                        <span className="text-xs text-cloud-400 font-mono"> / {sub.maxMarks}</span>
                       </div>
                     ) : (
                       <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-1 rounded">
@@ -258,16 +262,25 @@ export default function StudentAssignments() {
 
             <form onSubmit={handleSubmitSolution} className="p-6 space-y-4 text-xs">
               <div>
-                <label className="block font-semibold text-cloud-700 mb-1">Attach Solution File</label>
+                <label className="block font-semibold text-cloud-700 mb-1">Attach Solution (PDF, optional)</label>
                 <input
-                  type="text"
-                  required
-                  value={uploadFileName}
-                  onChange={(e) => setUploadFileName(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl border border-cloud-200 text-cloud-900 font-mono focus:outline-none focus:border-brand-500"
+                  type="file"
+                  accept=".pdf,application/pdf"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return setUploadFile(null);
+                    const problem = validatePdfFile(file);
+                    if (problem) {
+                      addToast(problem, 'warning', 'File Rejected');
+                      e.target.value = '';
+                      return setUploadFile(null);
+                    }
+                    setUploadFile(file);
+                  }}
+                  className="block w-full text-xs text-cloud-700 file:mr-3 file:px-3 file:py-1.5 file:rounded-lg file:border-0 file:bg-cloud-900 file:text-white file:text-xs file:cursor-pointer"
                 />
                 <p className="text-[11px] text-cloud-400 mt-1">
-                  Format: [CourseCode]_Submission_[RollNo].pdf (Max size: 50MB)
+                  {uploadFile ? `${uploadFile.name} • ${formatFileSize(uploadFile.size)}` : 'PDF only, max 10 MB. You can also submit a written answer below.'}
                 </p>
               </div>
 
@@ -277,14 +290,14 @@ export default function StudentAssignments() {
                   rows={3}
                   value={submissionNotes}
                   onChange={(e) => setSubmissionNotes(e.target.value)}
-                  placeholder="Describe your solution architecture, dataset results, or special notes for Dr. Demo Faculty A..."
+                  placeholder="Your answer, or notes for your instructor..."
                   className="w-full px-3 py-2 rounded-xl border border-cloud-200 text-cloud-900 focus:outline-none focus:border-brand-500"
                 />
               </div>
 
               <div className="p-3 rounded-xl bg-cloud-50 border border-cloud-200 text-[11px] text-cloud-600 flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-                <span>Your submission is timestamped and locked in the departmental audit trail.</span>
+                <span>Your submission is timestamped. You can resubmit until it is graded.</span>
               </div>
 
               <div className="pt-3 border-t border-cloud-200 flex items-center justify-end gap-2">

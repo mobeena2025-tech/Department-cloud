@@ -89,16 +89,16 @@ export default function FacultyAssignments({ onNavigate }) {
             <div className="flex items-center gap-4 flex-shrink-0">
               <div className="text-right">
                 <div className="text-xs font-bold text-cloud-900">
-                  {asg.submittedCount || 46} / {asg.totalEnrolled || 68} Submitted
+                  {asg.submittedCount} / {asg.totalEnrolled} Submitted
                 </div>
                 <div className="w-32 bg-cloud-100 h-2 rounded-full overflow-hidden mt-1.5">
                   <div
                     className="bg-brand-600 h-full rounded-full"
-                    style={{ width: `${((asg.submittedCount || 46) / (asg.totalEnrolled || 68)) * 100}%` }}
+                    style={{ width: `${asg.totalEnrolled ? (asg.submittedCount / asg.totalEnrolled) * 100 : 0}%` }}
                   />
                 </div>
                 <div className="text-[10px] text-cloud-400 mt-1">
-                  {asg.pendingCount || 22} pending evaluation
+                  {asg.pendingCount} not yet submitted
                 </div>
               </div>
 

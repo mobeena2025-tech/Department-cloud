@@ -149,7 +149,7 @@ export const api = {
     return fetchApi(`/submissions${qs ? `?${qs}` : ''}`);
   },
   getSubmission: (id) => fetchApi(`/submissions/${id}`),
-  submitAssignment: (data) => fetchApi('/submissions', { method: 'POST', body: JSON.stringify(data) }),
+  submitAssignment: (formData) => fetchApi('/submissions', { method: 'POST', body: formData }),
   gradeSubmission: (id, data) => fetchApi(`/submissions/${id}/grade`, { method: 'PUT', body: JSON.stringify(data) }),
 
   // Announcements

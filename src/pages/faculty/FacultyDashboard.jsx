@@ -212,14 +212,14 @@ export default function FacultyDashboard({ onNavigate }) {
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-cloud-100 flex items-center justify-center text-cloud-700 font-mono text-xs font-bold">
-                      {sub.rollNo?.slice(-3) || '001'}
+                      {sub.rollNo?.slice(-3) || '—'}
                     </div>
                     <div>
                       <h4 className="text-xs font-bold text-cloud-900 group-hover:text-brand-600 transition-colors">
                         {sub.studentName}
                       </h4>
                       <p className="text-[11px] text-cloud-500">
-                        Roll: {sub.rollNo} &bull; {sub.fileName || 'ANN_Assignment2.pdf'}
+                        Roll: {sub.rollNo || '—'} &bull; {sub.fileName || 'Written answer'}
                       </p>
                     </div>
                   </div>

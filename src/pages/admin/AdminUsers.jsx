@@ -129,12 +129,12 @@ export default function AdminUsers({ defaultRoleFilter = 'ALL' }) {
 
                   {/* Department */}
                   <td className="py-3.5 px-6 text-cloud-700">
-                    {user.department || 'Computer Science & Engineering'}
+                    {user.department || '—'}
                   </td>
 
                   {/* Identifier */}
                   <td className="py-3.5 px-6 font-mono text-cloud-700">
-                    {user.rollNo || user.empId || 'ADM-001'}
+                    {user.rollNo || user.empId || '—'}
                   </td>
 
                   {/* Status */}

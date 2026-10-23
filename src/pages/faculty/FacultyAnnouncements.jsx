@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Bell, Plus, Send, Paperclip } from 'lucide-react';
 import { api } from '../../services/api';
 import { useNotification } from '../../context/NotificationContext';
+import { useAuth } from '../../context/AuthContext';
 
 export default function FacultyAnnouncements() {
   const [announcements, setAnnouncements] = useState([]);
@@ -9,7 +10,9 @@ export default function FacultyAnnouncements() {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [priority, setPriority] = useState('High');
-  const [courseId, setCourseId] = useState('AI204');
+  const [courseId, setCourseId] = useState(''); // '' = department-wide (admin only)
+  const [courses, setCourses] = useState([]);
+  const { isAdmin } = useAuth();
   const [submitting, setSubmitting] = useState(false);
   const { addToast } = useNotification();
 
@@ -22,7 +25,15 @@ export default function FacultyAnnouncements() {
 
   useEffect(() => {
     loadAnnouncements();
-  }, []);
+    // Faculty only get the courses they teach; admin gets all.
+    api.getCourses()
+      .then((res) => {
+        const list = res?.courses || [];
+        setCourses(list);
+        if (!isAdmin && list.length) setCourseId(list[0].id);
+      })
+      .catch(() => {});
+  }, [isAdmin]);
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -32,10 +43,8 @@ export default function FacultyAnnouncements() {
         title,
         content,
         priority,
-        courseId,
-        courseName: 'Artificial Neural Networks',
-        author: 'Dr. Demo Faculty A',
-        category: 'Course Notice',
+        courseId: courseId || undefined,
+        category: courseId ? 'Course Notice' : 'Department Notice',
       });
       addToast('Course notice published to student portal!', 'success', 'Announcement Live');
       setShowForm(false);
@@ -98,8 +107,12 @@ export default function FacultyAnnouncements() {
                   onChange={(e) => setCourseId(e.target.value)}
                   className="w-full px-3 py-2 rounded-xl border border-cloud-200 bg-white text-cloud-900"
                 >
-                  <option value="AI204">AI204 — Artificial Neural Networks</option>
-                  <option value="AI301">AI301 — Deep Learning</option>
+                  {isAdmin && <option value="">Whole department</option>}
+                  {courses.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.code} — {c.title}
+                    </option>
+                  ))}
                 </select>
               </div>
 

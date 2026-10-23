@@ -1,12 +1,17 @@
-import multer from 'multer';
-
 import express from 'express';
-import { recordAuditLog } from '../data/store.js';
 import supabase from '../supabase.js';
-import { classifyUploadedDocument } from '../services/aiService.js';
+import { classifyUploadedDocument } from '../services/classifier.js';
 import { findCourse, isUuid } from '../lib/courseLookup.js';
 import { requireRole } from '../lib/auth.js';
+import { recordAuditLog } from '../lib/audit.js';
 import { visibleCourseIds, assertCanViewCourse, assertCanManageCourse } from '../lib/access.js';
+import {
+  BUCKET,
+  SIGNED_URL_SECONDS,
+  uploadSinglePdf,
+  hasPdfSignature,
+  safeFileName,
+} from '../lib/pdfUpload.js';
 import {
   HttpError,
   asyncHandler,
@@ -17,43 +22,6 @@ import {
 import { MATERIAL_SELECT, toMaterialResponse, formatFileSize } from '../lib/mappers.js';
 
 const router = express.Router();
-
-const BUCKET = 'academic-materials';
-const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10 MB
-const SIGNED_URL_SECONDS = 60 * 60;
-
-// A file must have BOTH the PDF MIME type and a .pdf extension.
-export function isAllowedPdf(file) {
-  return (
-    file?.mimetype === 'application/pdf' &&
-    typeof file.originalname === 'string' &&
-    file.originalname.toLowerCase().endsWith('.pdf')
-  );
-}
-
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: MAX_UPLOAD_BYTES, files: 1 },
-  fileFilter: (req, file, cb) => {
-    if (isAllowedPdf(file)) {
-      cb(null, true);
-    } else {
-      cb(new HttpError(400, 'Only PDF files are allowed'));
-    }
-  },
-});
-
-// Run multer and turn its errors into clean JSON responses.
-function uploadSinglePdf(req, res, next) {
-  upload.single('file')(req, res, (err) => {
-    if (!err) return next();
-    if (err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE') {
-      return next(new HttpError(413, 'File is larger than 10 MB'));
-    }
-    if (err instanceof HttpError) return next(err);
-    return next(new HttpError(400, 'Invalid upload'));
-  });
-}
 
 function dbError(context, error) {
   console.error(`${context}:`, error.message);
@@ -120,8 +88,22 @@ router.get('/:id', asyncHandler(async (req, res) => {
   if (error) throw dbError('Material lookup error', error);
   if (!data) throw new HttpError(404, 'Material not found');
 
-  // Access check BEFORE any signed URL is created.
-  await assertCanViewCourse(req.user, data.course_id);
+  // Access check BEFORE any signed URL is created. Denied attempts are logged.
+  try {
+    await assertCanViewCourse(req.user, data.course_id);
+  } catch (err) {
+    if (err.status === 403) {
+      recordAuditLog(req, {
+        action: 'OPEN_MATERIAL',
+        resource: data.title,
+        courseId: data.course_id,
+        status: 'DENIED',
+        severity: 'WARNING',
+        details: `Not enrolled in or assigned to ${data.courses?.code || 'this course'}.`,
+      });
+    }
+    throw err;
+  }
 
   const material = toMaterialResponse(data);
   material.fileUrl = null;
@@ -135,6 +117,11 @@ router.get('/:id', asyncHandler(async (req, res) => {
       console.error('Signed URL error:', signedError.message);
     } else {
       material.fileUrl = signedData.signedUrl;
+      recordAuditLog(req, {
+        action: 'OPEN_MATERIAL',
+        resource: data.title,
+        courseId: data.course_id,
+      });
     }
   }
 
@@ -153,9 +140,7 @@ router.post('/smart-classify', requireRole('faculty', 'admin'), asyncHandler(asy
 router.post('/', requireRole('faculty', 'admin'), uploadSinglePdf, asyncHandler(async (req, res) => {
   if (!req.file) throw new HttpError(400, 'PDF file is required');
 
-  // The MIME type and extension come from the client; also check the
-  // file really starts with the PDF signature.
-  if (req.file.buffer.subarray(0, 5).toString('latin1') !== '%PDF-') {
+  if (!hasPdfSignature(req.file.buffer)) {
     throw new HttpError(400, 'File is not a valid PDF');
   }
 
@@ -175,8 +160,7 @@ router.post('/', requireRole('faculty', 'admin'), uploadSinglePdf, asyncHandler(
   await assertCanManageCourse(req.user, course.id);
 
   // 2. Upload the file under a course-based path.
-  const safeFileName = req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-100);
-  const storagePath = `courses/${course.id}/${Date.now()}_${safeFileName}`;
+  const storagePath = `courses/${course.id}/${Date.now()}_${safeFileName(req.file.originalname)}`;
 
   const { error: storageError } = await supabase.storage
     .from(BUCKET)
@@ -210,11 +194,9 @@ router.post('/', requireRole('faculty', 'admin'), uploadSinglePdf, asyncHandler(
     throw dbError('Material insert error', insertError);
   }
 
-  recordAuditLog({
-    actorName: req.user.name,
-    actorRole: req.user.role,
-    actorEmail: req.user.email,
+  recordAuditLog(req, {
     action: 'UPLOAD_MATERIAL',
+    courseId: course.id,
     resource: `${inserted.title} (${course.code} - Unit ${unitNum})`,
     status: 'SUCCESS',
     severity: 'INFO',
@@ -258,11 +240,9 @@ router.put('/:id', requireRole('faculty', 'admin'), asyncHandler(async (req, res
   if (error) throw dbError('Material update error', error);
   if (!data) throw new HttpError(404, 'Material not found');
 
-  recordAuditLog({
-    actorName: req.user.name,
-    actorRole: req.user.role,
-    actorEmail: req.user.email,
-    action: 'UPDATE_METADATA',
+  recordAuditLog(req, {
+    action: 'UPDATE_MATERIAL',
+    courseId: existing.course_id,
     resource: `${data.title} (${data.courses?.code || ''})`,
     status: 'SUCCESS',
     severity: 'INFO',
@@ -297,11 +277,9 @@ router.delete('/:id', requireRole('faculty', 'admin'), asyncHandler(async (req, 
     }
   }
 
-  recordAuditLog({
-    actorName: req.user.name,
-    actorRole: req.user.role,
-    actorEmail: req.user.email,
+  recordAuditLog(req, {
     action: 'DELETE_MATERIAL',
+    courseId: existing.course_id,
     resource: existing.title,
     status: 'SUCCESS',
     severity: 'WARNING',

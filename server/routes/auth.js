@@ -2,6 +2,7 @@ import express from 'express';
 import { createAuthClient } from '../supabase.js';
 import { requireAuth, loadProfile, toUserResponse } from '../lib/auth.js';
 import { HttpError, asyncHandler, requiredString } from '../lib/validate.js';
+import { recordAuditLog } from '../lib/audit.js';
 
 const router = express.Router();
 
@@ -20,6 +21,13 @@ router.post('/login', asyncHandler(async (req, res) => {
 
   const { data, error } = await createAuthClient().auth.signInWithPassword({ email, password });
   if (error || !data?.session) {
+    recordAuditLog(req, {
+      action: 'LOGIN',
+      actor: { email },
+      status: 'FAILURE',
+      severity: 'WARNING',
+      details: 'Wrong email or password.',
+    });
     // Same message for unknown email and wrong password.
     throw new HttpError(401, 'Invalid email or password');
   }
@@ -27,7 +35,9 @@ router.post('/login', asyncHandler(async (req, res) => {
   const profile = await loadProfile(data.user.id);
   if (!profile) throw new HttpError(403, 'This account has no role assigned. Contact the department admin.');
 
-  res.json({ success: true, session: sessionResponse(data.session), user: toUserResponse(profile) });
+  const user = toUserResponse(profile);
+  recordAuditLog(req, { action: 'LOGIN', actor: user });
+  res.json({ success: true, session: sessionResponse(data.session), user });
 }));
 
 // Exchange a refresh token for a new access token.

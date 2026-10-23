@@ -1,8 +1,9 @@
 import express from 'express';
-import { recordAuditLog } from '../data/store.js';
 import supabase from '../supabase.js';
 import { findCourse, isUuid } from '../lib/courseLookup.js';
 import { requireRole } from '../lib/auth.js';
+import { recordAuditLog } from '../lib/audit.js';
+import { withAssignmentCounts } from '../lib/counts.js';
 import { visibleCourseIds, assertCanViewCourse, assertCanManageCourse } from '../lib/access.js';
 import {
   HttpError,
@@ -51,7 +52,7 @@ router.get('/', asyncHandler(async (req, res) => {
   const { data, error } = await query;
   if (error) throw dbError('Assignments list error', error);
 
-  res.json({ success: true, assignments: data.map(toAssignmentResponse) });
+  res.json({ success: true, assignments: await withAssignmentCounts(data, toAssignmentResponse) });
 }));
 
 // Single assignment
@@ -70,8 +71,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
 
   res.json({
     success: true,
-    // Submissions move to Supabase in Phase 4.
-    assignment: { ...toAssignmentResponse(data), submissions: [] },
+    assignment: (await withAssignmentCounts([data], toAssignmentResponse))[0],
   });
 }));
 
@@ -115,18 +115,16 @@ router.post('/', requireRole('faculty', 'admin'), asyncHandler(async (req, res) 
 
   if (error) throw dbError('Assignment insert error', error);
 
-  recordAuditLog({
-    actorName: req.user.name,
-    actorRole: req.user.role,
-    actorEmail: req.user.email,
+  recordAuditLog(req, {
     action: 'CREATE_ASSIGNMENT',
+    courseId: course.id,
     resource: `${course.code}: ${title}`,
     status: 'SUCCESS',
     severity: 'INFO',
     details: `Published assignment due on ${new Date(dueDate).toLocaleDateString()}.`,
   });
 
-  res.status(201).json({ success: true, assignment: toAssignmentResponse(data) });
+  res.status(201).json({ success: true, assignment: (await withAssignmentCounts([data], toAssignmentResponse))[0] });
 }));
 
 export default router;

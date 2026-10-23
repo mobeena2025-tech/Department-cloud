@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { api } from '../../services/api';
 import {
   Cloud,
   Search,
@@ -23,11 +24,23 @@ export default function TopNav({ onNavigate, currentPath }) {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
 
-  const notifications = [
-    { id: 1, title: 'ANN Assignment 2 Deadline', time: 'In 6 days', unread: true },
-    { id: 2, title: 'New Material: CNN Pooling.pdf', time: '2 hours ago', unread: true },
-    { id: 3, title: 'Guest Lecture Announcement', time: 'Yesterday', unread: false },
-  ];
+  // Latest announcements for this user (department-wide + their courses).
+  const [notifications, setNotifications] = useState([]);
+  useEffect(() => {
+    api.getAnnouncements()
+      .then((res) => {
+        const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+        setNotifications(
+          (res?.announcements || []).slice(0, 5).map((a) => ({
+            id: a.id,
+            title: a.courseCode ? `${a.courseCode}: ${a.title}` : a.title,
+            time: new Date(a.date).toLocaleString(),
+            unread: new Date(a.date).getTime() > weekAgo,
+          }))
+        );
+      })
+      .catch(() => {});
+  }, [currentUser?.id]);
 
   return (
     <header className="sticky top-0 z-30 bg-white border-b border-cloud-200/90 shadow-xs">
@@ -110,16 +123,19 @@ export default function TopNav({ onNavigate, currentPath }) {
               title="Department Notifications"
             >
               <Bell className="w-4 h-4" />
-              <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-brand-600" />
+              {notifications.some((n) => n.unread) && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-brand-600" />
+              )}
             </button>
 
             {showNotifications && (
               <div className="absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-cloud-200 p-3 z-50 text-xs animate-in fade-in duration-150">
                 <div className="flex items-center justify-between pb-2 border-b border-cloud-100 mb-2">
                   <span className="font-bold text-cloud-900">Notifications</span>
-                  <span className="badge-pill bg-brand-50 text-brand-700 text-[10px]">2 unread</span>
+                  <span className="badge-pill bg-brand-50 text-brand-700 text-[10px]">{notifications.filter((n) => n.unread).length} this week</span>
                 </div>
                 <div className="space-y-2">
+                  {notifications.length === 0 && <div className="p-2 text-cloud-500">No announcements yet.</div>}
                   {notifications.map((n) => (
                     <div key={n.id} className="p-2 rounded-lg hover:bg-cloud-50 transition-colors">
                       <div className="font-medium text-cloud-900">{n.title}</div>

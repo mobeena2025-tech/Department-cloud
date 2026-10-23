@@ -13,9 +13,12 @@ import {
   COURSE_CODE_PATTERN,
   SECTION_PATTERN,
 } from '../lib/validate.js';
+import { withAssignmentCounts } from '../lib/counts.js';
 import {
   MATERIAL_SELECT,
   ASSIGNMENT_SELECT,
+  ANNOUNCEMENT_SELECT,
+  toAnnouncementResponse,
   toCourseResponse,
   toMaterialResponse,
   toAssignmentResponse,
@@ -112,19 +115,22 @@ router.get('/:id', asyncHandler(async (req, res) => {
   if (!course) throw new HttpError(404, 'Course not found');
   await assertCanViewCourse(req.user, course.id);
 
-  const [m, a] = await Promise.all([
+  const [m, a, n] = await Promise.all([
     supabase.from('materials').select(MATERIAL_SELECT).eq('course_id', course.id).order('created_at', { ascending: false }),
     supabase.from('assignments').select(ASSIGNMENT_SELECT).eq('course_id', course.id).order('due_date'),
+    supabase.from('announcements').select(ANNOUNCEMENT_SELECT).eq('course_id', course.id).order('created_at', { ascending: false }),
   ]);
   if (m.error) throw dbError('Course materials error', m.error);
   if (a.error) throw dbError('Course assignments error', a.error);
+  if (n.error) throw dbError('Course announcements error', n.error);
   const { faculty, enrolled } = await loadStaffAndEnrollment([course.id]);
 
   res.json({
     success: true,
     course: toCourseResponse(course, {
       materials: m.data.map(toMaterialResponse),
-      assignments: a.data.map(toAssignmentResponse),
+      assignments: await withAssignmentCounts(a.data, toAssignmentResponse),
+      announcements: n.data.map(toAnnouncementResponse),
       facultyNames: faculty.get(course.id) || [],
       enrolledCount: enrolled.get(course.id) || 0,
       nested: true,

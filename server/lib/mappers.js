@@ -51,7 +51,7 @@ export function toMaterialResponse(m) {
   };
 }
 
-export function toAssignmentResponse(a) {
+export function toAssignmentResponse(a, { enrolled = 0, submitted = 0 } = {}) {
   return {
     id: a.id,
     courseId: a.course_id,
@@ -71,10 +71,9 @@ export function toAssignmentResponse(a) {
     attachmentName: a.attachment_name,
     attachmentSize: a.attachment_size,
 
-    // Real counts arrive with enrollments (Phase 3) and submissions (Phase 4).
-    totalEnrolled: a.total_enrolled ?? 0,
-    submittedCount: 0,
-    pendingCount: a.total_enrolled ?? 0,
+    totalEnrolled: enrolled,
+    submittedCount: submitted,
+    pendingCount: Math.max(0, enrolled - submitted),
 
     status: a.status,
     createdAt: a.created_at,
@@ -96,7 +95,7 @@ function unitsFrom(unitNumbers) {
  */
 export function toCourseResponse(
   c,
-  { materials = [], assignments = [], facultyNames = [], enrolledCount = 0, nested = false } = {}
+  { materials = [], assignments = [], announcements = [], facultyNames = [], enrolledCount = 0, nested = false } = {}
 ) {
   const course = {
     id: c.id,
@@ -122,7 +121,60 @@ export function toCourseResponse(
   if (nested) {
     course.materials = materials;
     course.assignments = assignments;
-    course.announcements = []; // Phase 4
+    course.announcements = announcements;
   }
   return course;
+}
+
+export const ANNOUNCEMENT_SELECT = `
+  *,
+  courses ( id, code, name )
+`;
+
+export function toAnnouncementResponse(a) {
+  return {
+    id: a.id,
+    courseId: a.course_id,
+    courseCode: a.courses?.code || null,
+    courseName: a.courses?.name || null,
+    title: a.title,
+    content: a.content,
+    category: a.category,
+    priority: a.priority,
+    department: 'CSE - AI & ML',
+    author: a.author_name,
+    date: a.created_at,
+    attachments: [],
+  };
+}
+
+export const SUBMISSION_SELECT = `
+  *,
+  assignments!inner ( id, title, course_id, max_marks, courses ( code, name ) ),
+  student:profiles!submissions_student_id_fkey ( full_name, roll_number ),
+  grader:profiles!submissions_graded_by_fkey ( full_name )
+`;
+
+export function toSubmissionResponse(s) {
+  return {
+    id: s.id,
+    assignmentId: s.assignment_id,
+    assignmentTitle: s.assignments?.title || '',
+    courseId: s.assignments?.course_id || null,
+    courseCode: s.assignments?.courses?.code || '',
+    studentId: s.student_id,
+    studentName: s.student?.full_name || '',
+    rollNo: s.student?.roll_number || '',
+    submittedAt: s.submitted_at,
+    status: s.status,
+    submissionText: s.submission_text,
+    fileName: s.file_name,
+    fileSize: formatFileSize(s.file_size),
+    hasFile: Boolean(s.storage_path),
+    grade: s.grade === null || s.grade === undefined ? null : Number(s.grade),
+    maxMarks: s.assignments?.max_marks ?? null,
+    feedback: s.feedback,
+    gradedBy: s.grader?.full_name || null,
+    gradedAt: s.graded_at,
+  };
 }

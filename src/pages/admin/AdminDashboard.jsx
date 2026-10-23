@@ -39,33 +39,13 @@ export default function AdminDashboard({ onNavigate }) {
     load();
   }, []);
 
-  const overview = analytics?.overview || {
-    totalStudents: 742,
-    totalFaculty: 38,
-    totalCourses: 24,
-    academicResources: 846,
-    storageUsedGb: 184.2,
-    storageTotalGb: 500.0,
-    assignmentSubmissionRate: 88.4,
-    dailyActiveUsers: 612,
-  };
-
-  const resourceUsage = analytics?.resourceUsageByCourse || [
-    { courseCode: 'AI204', courseName: 'Artificial Neural Networks', downloads: 866, uploads: 22 },
-    { courseCode: 'CS301', courseName: 'Computer Networks', downloads: 720, uploads: 18 },
-    { courseCode: 'CS202', courseName: 'Database Management Systems', downloads: 685, uploads: 20 },
-    { courseCode: 'AI302', courseName: 'Data Science', downloads: 540, uploads: 16 },
-  ];
-
-  const weeklyActivity = analytics?.weeklyActivity || [
-    { day: 'Mon', downloads: 340, activeLogins: 580 },
-    { day: 'Tue', downloads: 420, activeLogins: 610 },
-    { day: 'Wed', downloads: 510, activeLogins: 645 },
-    { day: 'Thu', downloads: 480, activeLogins: 620 },
-    { day: 'Fri', downloads: 590, activeLogins: 690 },
-    { day: 'Sat', downloads: 260, activeLogins: 320 },
-    { day: 'Sun', downloads: 310, activeLogins: 390 },
-  ];
+  // Every number below comes from the database (see GET /api/analytics).
+  const overview = analytics?.overview || {};
+  const resourceUsage = analytics?.resourceUsageByCourse || [];
+  const weeklyActivity = analytics?.weeklyActivity || [];
+  const maxDownloads = Math.max(1, ...resourceUsage.map((c) => c.downloads + c.uploads));
+  const maxLogins = Math.max(1, ...weeklyActivity.map((d) => d.activeLogins));
+  const fmt = (n) => (loading || n === undefined || n === null ? '—' : String(n));
 
   return (
     <div className="space-y-6">
@@ -84,7 +64,7 @@ export default function AdminDashboard({ onNavigate }) {
               Department Academic Cloud Overview
             </h1>
             <p className="text-xs text-cloud-300 mt-1">
-              Centralized infrastructure telemetry, resource governance, and security audit monitoring.
+              Live counts from the department database and audit log.
             </p>
           </div>
 
@@ -111,31 +91,29 @@ export default function AdminDashboard({ onNavigate }) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Students"
-          value="742"
-          subtitle="Active B.E. / M.Tech"
-          trend="+12 New"
+          value={fmt(overview.totalStudents)}
+          subtitle={`${fmt(overview.totalEnrollments)} course enrollments`}
           color="brand"
           icon={Users}
         />
         <StatCard
           title="Faculty"
-          value="38"
-          subtitle="Professors & Instructors"
+          value={fmt(overview.totalFaculty)}
+          subtitle="Teaching accounts"
           color="emerald"
           icon={Briefcase}
         />
         <StatCard
           title="Courses"
-          value="24"
-          subtitle="Active Autonomous Syllabi"
+          value={fmt(overview.totalCourses)}
+          subtitle={`${fmt(overview.activeAssignments)} active assignments`}
           color="blue"
           icon={BookOpen}
         />
         <StatCard
           title="Academic Resources"
-          value="846"
-          subtitle="Indexed in Cloud Store"
-          trend="+28 this week"
+          value={fmt(overview.academicResources)}
+          subtitle={`${fmt(overview.storageUsedMb)} MB stored`}
           color="purple"
           icon={FolderArchive}
         />
@@ -152,16 +130,16 @@ export default function AdminDashboard({ onNavigate }) {
             <div className="flex items-center justify-between pb-4 border-b border-cloud-100 mb-4">
               <div>
                 <h3 className="text-sm font-bold text-cloud-900">Resource Usage by Course</h3>
-                <p className="text-xs text-cloud-500">Student downloads and lecture note access volume</p>
+                <p className="text-xs text-cloud-500">Files uploaded and opened per course (opens: last 30 days)</p>
               </div>
-              <span className="badge-pill bg-brand-50 text-brand-700 text-xs font-semibold">
-                Live Cloud Telemetry
-              </span>
             </div>
 
             <div className="space-y-4">
+              {!loading && resourceUsage.length === 0 && (
+                <p className="text-xs text-cloud-500">No courses yet.</p>
+              )}
               {resourceUsage.map((course) => {
-                const percentage = Math.min(100, Math.round((course.downloads / 900) * 100));
+                const percentage = Math.round(((course.downloads + course.uploads) / maxDownloads) * 100);
                 return (
                   <div key={course.courseCode} className="space-y-1.5">
                     <div className="flex items-center justify-between text-xs">
@@ -170,7 +148,7 @@ export default function AdminDashboard({ onNavigate }) {
                         <span className="text-cloud-600 hidden sm:inline">{course.courseName}</span>
                       </div>
                       <span className="font-mono font-semibold text-brand-700">
-                        {course.downloads} Downloads &bull; {course.uploads} Files
+                        {course.downloads} Opens &bull; {course.uploads} Files
                       </span>
                     </div>
 
@@ -190,20 +168,17 @@ export default function AdminDashboard({ onNavigate }) {
           <div className="cloud-card p-6">
             <div className="flex items-center justify-between pb-4 border-b border-cloud-100 mb-4">
               <div>
-                <h3 className="text-sm font-bold text-cloud-900">Weekly Active Users & Activity</h3>
-                <p className="text-xs text-cloud-500">Unique logins and concurrent document requests</p>
-              </div>
-              <div className="text-xs font-mono font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full">
-                612 DAU Peak
+                <h3 className="text-sm font-bold text-cloud-900">Active Users, Last 7 Days</h3>
+                <p className="text-xs text-cloud-500">Distinct users who signed in each day</p>
               </div>
             </div>
 
             {/* Custom Bar Chart Visualizer */}
             <div className="grid grid-cols-7 gap-2 items-end h-40 pt-4 pb-2 border-b border-cloud-100 text-center">
               {weeklyActivity.map((day) => {
-                const heightPercent = Math.round((day.activeLogins / 750) * 100);
+                const heightPercent = Math.round((day.activeLogins / maxLogins) * 100);
                 return (
-                  <div key={day.day} className="flex flex-col items-center justify-end h-full group">
+                  <div key={day.date} className="flex flex-col items-center justify-end h-full group">
                     <span className="text-[10px] font-mono text-cloud-500 opacity-0 group-hover:opacity-100 transition-opacity mb-1">
                       {day.activeLogins}
                     </span>
@@ -220,8 +195,8 @@ export default function AdminDashboard({ onNavigate }) {
             </div>
 
             <div className="mt-3 flex items-center justify-between text-xs text-cloud-500">
-              <span>Synchronized across web portal and student identity tokens</span>
-              <span className="text-emerald-700 font-semibold">&uarr; 14.8% vs last week</span>
+              <span>Counted from sign-in events in the audit log</span>
+              <span>{weeklyActivity.reduce((s, d) => s + d.downloads, 0)} file opens this week</span>
             </div>
           </div>
 
@@ -237,25 +212,27 @@ export default function AdminDashboard({ onNavigate }) {
 
             <div className="text-center py-4 bg-cloud-50 rounded-xl border border-cloud-100 mb-4">
               <div className="text-3xl font-extrabold text-emerald-700 font-mono">
-                {overview.assignmentSubmissionRate}%
+                {overview.assignmentSubmissionRate === null || overview.assignmentSubmissionRate === undefined
+                  ? '—'
+                  : `${overview.assignmentSubmissionRate}%`}
               </div>
               <span className="text-xs text-cloud-600 mt-1 block">
-                Across 24 active coursework assignments
+                Submissions received / expected across {fmt(overview.totalAssignments)} assignments
               </span>
             </div>
 
             <div className="space-y-2 text-xs">
               <div className="flex justify-between text-cloud-600">
-                <span>On-time Deliverables:</span>
-                <span className="font-bold text-cloud-900">92.4%</span>
+                <span>Submissions received:</span>
+                <span className="font-bold text-cloud-900">{fmt(overview.totalSubmissions)}</span>
               </div>
               <div className="flex justify-between text-cloud-600">
-                <span>Extension Requests:</span>
-                <span className="font-bold text-cloud-900">4.2%</span>
+                <span>Graded:</span>
+                <span className="font-bold text-cloud-900">{fmt(overview.gradedSubmissions)}</span>
               </div>
               <div className="flex justify-between text-cloud-600">
-                <span>Academic Integrity Index:</span>
-                <span className="font-bold text-emerald-700">99.8%</span>
+                <span>Denied access attempts (30 days):</span>
+                <span className="font-bold text-rose-700">{fmt(overview.deniedAccessLast30Days)}</span>
               </div>
             </div>
           </div>
@@ -265,7 +242,7 @@ export default function AdminDashboard({ onNavigate }) {
             <div className="flex items-center justify-between pb-3 border-b border-cloud-100 mb-4">
               <h3 className="text-sm font-bold text-cloud-900 flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-purple-600" />
-                Live Security Audit Stream
+                Recent Audit Events
               </h3>
               <button
                 onClick={() => onNavigate('/admin/audit-logs')}
@@ -276,6 +253,7 @@ export default function AdminDashboard({ onNavigate }) {
             </div>
 
             <div className="space-y-3">
+              {!loading && auditLogs.length === 0 && <p className="text-xs text-cloud-500">No events yet.</p>}
               {auditLogs.map((log) => (
                 <div key={log.id} className="p-2.5 rounded-xl bg-cloud-50/60 border border-cloud-100 text-xs">
                   <div className="flex items-center justify-between text-[10px] text-cloud-500 mb-1">

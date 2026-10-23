@@ -42,23 +42,27 @@ export default function SmartUploadModal({ isOpen, onClose, onUploadSuccess }) {
     try {
       // The classifier only looks at the file name and size.
       const res = await api.smartClassify(file.name, formatFileSize(file.size));
-      if (res?.classification) {
-        setClassification(res.classification);
-        setFormState({
-          course: res.classification.suggestedCourse,
-          courseCode: res.classification.suggestedCourseCode,
-          unit: res.classification.suggestedUnit,
-          unitNumber: res.classification.unitNumber,
-          topic: res.classification.suggestedTopic,
-          type: res.classification.suggestedType,
-          tags: res.classification.suggestedTags.join(', '),
-          visibility: 'Department / Enrolled',
-        });
-      }
+      const c = res?.classification;
+      if (!c || c.method === 'none') throw new Error('no suggestion');
+      setClassification(c);
+      setFormState({
+        course: c.suggestedCourse || '',
+        courseCode: c.suggestedCourseCode || '',
+        unit: c.suggestedUnit || 'Unit 1',
+        unitNumber: c.unitNumber || 1,
+        topic: c.suggestedTopic || '',
+        type: c.suggestedType || 'Lecture Material',
+        tags: (c.suggestedTags || []).join(', '),
+        visibility: 'Department / Enrolled',
+      });
     } catch (err) {
       // No suggestion available: let the user fill the fields in by hand.
-      addToast('Could not classify this file. Please fill in the details.', 'info', 'Manual Entry');
-      setClassification({ confidence: 0 });
+      addToast('No suggestion for this file name. Please fill in the details.', 'info', 'Manual Entry');
+      setClassification({ method: 'manual' });
+      setFormState({
+        course: '', courseCode: '', unit: 'Unit 1', unitNumber: 1,
+        topic: '', type: 'Lecture Material', tags: '', visibility: 'Department / Enrolled',
+      });
       setIsEditing(true);
     } finally {
       setAnalyzing(false);
@@ -165,7 +169,7 @@ export default function SmartUploadModal({ isOpen, onClose, onUploadSuccess }) {
                   </span>
                 </div>
                 <span className="badge-pill bg-brand-100 text-brand-800 text-[10px] font-bold">
-                  {classification.confidence ? `${(classification.confidence * 100).toFixed(0)}% Match Confidence` : 'Manual Entry'}
+                  {classification.method === 'filename-keywords' ? 'Suggested from file name — please check' : 'Manual Entry'}
                 </span>
               </div>
 

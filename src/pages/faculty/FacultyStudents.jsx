@@ -83,7 +83,7 @@ export default function FacultyStudents() {
                     <div className="text-[11px] text-cloud-500">{stu.email}</div>
                   </td>
                   <td className="py-3.5 px-6 font-mono font-semibold text-brand-700">
-                    {stu.rollNo || 'DEMO-ROLL'}
+                    {stu.rollNo || '—'}
                   </td>
                   <td className="py-3.5 px-6 font-mono font-bold text-cloud-800">
                     {stu.cgpa ? stu.cgpa.toFixed(2) : '8.80'}
