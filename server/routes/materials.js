@@ -5,7 +5,8 @@ import { recordAuditLog } from '../data/store.js';
 import supabase from '../supabase.js';
 import { classifyUploadedDocument } from '../services/aiService.js';
 import { findCourse, isUuid } from '../lib/courseLookup.js';
-import { getDemoUserId } from '../lib/demoAuth.js';
+import { requireRole } from '../lib/auth.js';
+import { visibleCourseIds, assertCanViewCourse, assertCanManageCourse } from '../lib/access.js';
 import {
   HttpError,
   asyncHandler,
@@ -72,10 +73,16 @@ router.get('/', asyncHandler(async (req, res) => {
   const fileType = optionalString(req.query.fileType, 'fileType', { max: 20 });
   const query = optionalString(req.query.query, 'query', { max: 100 });
 
-  const { data, error } = await supabase
+  const visible = await visibleCourseIds(req.user);
+  if (visible !== null && visible.length === 0) return res.json({ success: true, materials: [] });
+
+  let dbQuery = supabase
     .from('materials')
     .select(MATERIAL_SELECT)
     .order('created_at', { ascending: false });
+  if (visible !== null) dbQuery = dbQuery.in('course_id', visible);
+
+  const { data, error } = await dbQuery;
   if (error) throw dbError('Materials list error', error);
 
   let list = data.map(toMaterialResponse);
@@ -113,6 +120,9 @@ router.get('/:id', asyncHandler(async (req, res) => {
   if (error) throw dbError('Material lookup error', error);
   if (!data) throw new HttpError(404, 'Material not found');
 
+  // Access check BEFORE any signed URL is created.
+  await assertCanViewCourse(req.user, data.course_id);
+
   const material = toMaterialResponse(data);
   material.fileUrl = null;
 
@@ -132,7 +142,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
 }));
 
 // AI Smart Classification preview endpoint (file name based)
-router.post('/smart-classify', asyncHandler(async (req, res) => {
+router.post('/smart-classify', requireRole('faculty', 'admin'), asyncHandler(async (req, res) => {
   const fileName = requiredString(req.body?.fileName, 'fileName', { max: 255 });
   const fileSize = optionalString(req.body?.fileSize, 'fileSize', { max: 20 });
   const classification = classifyUploadedDocument(fileName, fileSize);
@@ -140,7 +150,7 @@ router.post('/smart-classify', asyncHandler(async (req, res) => {
 }));
 
 // Upload Material endpoint (Faculty/Admin)
-router.post('/', uploadSinglePdf, asyncHandler(async (req, res) => {
+router.post('/', requireRole('faculty', 'admin'), uploadSinglePdf, asyncHandler(async (req, res) => {
   if (!req.file) throw new HttpError(400, 'PDF file is required');
 
   // The MIME type and extension come from the client; also check the
@@ -162,6 +172,7 @@ router.post('/', uploadSinglePdf, asyncHandler(async (req, res) => {
   const { course, error: courseError } = await findCourse(courseId);
   if (courseError) throw dbError('Course lookup error', courseError);
   if (!course) throw new HttpError(404, 'Course not found');
+  await assertCanManageCourse(req.user, course.id);
 
   // 2. Upload the file under a course-based path.
   const safeFileName = req.file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_').slice(-100);
@@ -176,7 +187,7 @@ router.post('/', uploadSinglePdf, asyncHandler(async (req, res) => {
   }
 
   // 3. Save the row. Store the storage path, never a URL.
-  const uploadedBy = getDemoUserId(req);
+  const uploadedBy = req.user.id;
   const { data: inserted, error: insertError } = await supabase
     .from('materials')
     .insert({
@@ -200,8 +211,9 @@ router.post('/', uploadSinglePdf, asyncHandler(async (req, res) => {
   }
 
   recordAuditLog({
-    actorName: uploadedBy || 'Unknown user',
-    actorRole: 'faculty',
+    actorName: req.user.name,
+    actorRole: req.user.role,
+    actorEmail: req.user.email,
     action: 'UPLOAD_MATERIAL',
     resource: `${inserted.title} (${course.code} - Unit ${unitNum})`,
     status: 'SUCCESS',
@@ -217,9 +229,15 @@ router.post('/', uploadSinglePdf, asyncHandler(async (req, res) => {
 }));
 
 // Update material metadata (Faculty/Admin)
-router.put('/:id', asyncHandler(async (req, res) => {
+router.put('/:id', requireRole('faculty', 'admin'), asyncHandler(async (req, res) => {
   const id = requireMaterialId(req.params.id);
   const body = req.body || {};
+
+  const { data: existing, error: findError } = await supabase
+    .from('materials').select('id, course_id').eq('id', id).maybeSingle();
+  if (findError) throw dbError('Material lookup error', findError);
+  if (!existing) throw new HttpError(404, 'Material not found');
+  await assertCanManageCourse(req.user, existing.course_id);
 
   // Only fields that exist as columns can be changed.
   const updates = {};
@@ -241,8 +259,9 @@ router.put('/:id', asyncHandler(async (req, res) => {
   if (!data) throw new HttpError(404, 'Material not found');
 
   recordAuditLog({
-    actorName: getDemoUserId(req) || 'Unknown user',
-    actorRole: 'faculty',
+    actorName: req.user.name,
+    actorRole: req.user.role,
+    actorEmail: req.user.email,
     action: 'UPDATE_METADATA',
     resource: `${data.title} (${data.courses?.code || ''})`,
     status: 'SUCCESS',
@@ -254,16 +273,17 @@ router.put('/:id', asyncHandler(async (req, res) => {
 }));
 
 // Delete material: remove the database row and its Storage object
-router.delete('/:id', asyncHandler(async (req, res) => {
+router.delete('/:id', requireRole('faculty', 'admin'), asyncHandler(async (req, res) => {
   const id = requireMaterialId(req.params.id);
 
   const { data: existing, error: findError } = await supabase
     .from('materials')
-    .select('id, title, storage_path')
+    .select('id, course_id, title, storage_path')
     .eq('id', id)
     .maybeSingle();
   if (findError) throw dbError('Material lookup error', findError);
   if (!existing) throw new HttpError(404, 'Material not found');
+  await assertCanManageCourse(req.user, existing.course_id);
 
   // Delete the row first: if removing the file then fails, students can no
   // longer see a broken entry, and the stray file is logged for cleanup.
@@ -278,8 +298,9 @@ router.delete('/:id', asyncHandler(async (req, res) => {
   }
 
   recordAuditLog({
-    actorName: getDemoUserId(req) || 'Unknown user',
-    actorRole: 'faculty',
+    actorName: req.user.name,
+    actorRole: req.user.role,
+    actorEmail: req.user.email,
     action: 'DELETE_MATERIAL',
     resource: existing.title,
     status: 'SUCCESS',

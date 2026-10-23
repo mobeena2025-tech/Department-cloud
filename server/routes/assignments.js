@@ -2,7 +2,8 @@ import express from 'express';
 import { recordAuditLog } from '../data/store.js';
 import supabase from '../supabase.js';
 import { findCourse, isUuid } from '../lib/courseLookup.js';
-import { getDemoUserId } from '../lib/demoAuth.js';
+import { requireRole } from '../lib/auth.js';
+import { visibleCourseIds, assertCanViewCourse, assertCanManageCourse } from '../lib/access.js';
 import {
   HttpError,
   asyncHandler,
@@ -30,10 +31,14 @@ router.get('/', asyncHandler(async (req, res) => {
     throw new HttpError(400, `status must be one of ${STATUSES.join(', ')}`);
   }
 
+  const visible = await visibleCourseIds(req.user);
+  if (visible !== null && visible.length === 0) return res.json({ success: true, assignments: [] });
+
   let query = supabase
     .from('assignments')
     .select(ASSIGNMENT_SELECT)
     .order('created_at', { ascending: false });
+  if (visible !== null) query = query.in('course_id', visible);
 
   if (courseIdParam !== undefined) {
     const { course, error } = await findCourse(courseIdParam, 'id');
@@ -61,6 +66,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
 
   if (error) throw dbError('Assignment lookup error', error);
   if (!data) throw new HttpError(404, 'Assignment not found');
+  await assertCanViewCourse(req.user, data.course_id);
 
   res.json({
     success: true,
@@ -70,7 +76,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
 }));
 
 // Create assignment (Faculty/Admin)
-router.post('/', asyncHandler(async (req, res) => {
+router.post('/', requireRole('faculty', 'admin'), asyncHandler(async (req, res) => {
   const body = req.body || {};
   const title = requiredString(body.title, 'title', { max: 200 });
   const courseIdParam = requiredString(body.courseId, 'courseId', { max: 40 });
@@ -84,14 +90,11 @@ router.post('/', asyncHandler(async (req, res) => {
   const { course, error: courseError } = await findCourse(courseIdParam);
   if (courseError) throw dbError('Course lookup error', courseError);
   if (!course) throw new HttpError(404, 'Course not found');
+  await assertCanManageCourse(req.user, course.id);
 
-  // Faculty identity comes from the (temporary) demo token, not the body.
-  const facultyId = getDemoUserId(req);
-  let facultyName = null;
-  if (facultyId) {
-    const { data: user } = await supabase.from('users').select('name').eq('id', facultyId).maybeSingle();
-    facultyName = user?.name ?? null;
-  }
+  // Who created it comes from the verified session, never the request body.
+  const facultyId = req.user.id;
+  const facultyName = req.user.name;
 
   const { data, error } = await supabase
     .from('assignments')
@@ -113,8 +116,9 @@ router.post('/', asyncHandler(async (req, res) => {
   if (error) throw dbError('Assignment insert error', error);
 
   recordAuditLog({
-    actorName: facultyName || 'Unknown user',
-    actorRole: 'faculty',
+    actorName: req.user.name,
+    actorRole: req.user.role,
+    actorEmail: req.user.email,
     action: 'CREATE_ASSIGNMENT',
     resource: `${course.code}: ${title}`,
     status: 'SUCCESS',

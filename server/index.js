@@ -11,6 +11,7 @@ import aiSearchRoutes from './routes/aiSearch.js';
 import auditLogRoutes from './routes/auditLogs.js';
 import analyticsRoutes from './routes/analytics.js';
 import userRoutes from './routes/users.js';
+import { requireAuth } from './lib/auth.js';
 
 const app = express();
 const PORT = process.env.API_PORT || 5000;
@@ -33,8 +34,22 @@ app.use((req, res, next) => {
   next();
 });
 
-// Mount routes
+// ---- Public routes (no token needed) ----
+app.get('/api/health', (req, res) => {
+  res.json({
+    status: 'online',
+    service: 'Department Academic Cloud API',
+    version: '1.0.0',
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// /login and /refresh are public; /me checks the token itself.
 app.use('/api/auth', authRoutes);
+
+// ---- Everything below needs a valid Supabase access token ----
+app.use('/api', requireAuth);
+
 app.use('/api/courses', courseRoutes);
 app.use('/api/materials', materialRoutes);
 app.use('/api/assignments', assignmentRoutes);
@@ -44,16 +59,6 @@ app.use('/api/ai-search', aiSearchRoutes);
 app.use('/api/audit-logs', auditLogRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/users', userRoutes);
-
-// Health check
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'online',
-    service: 'Department Academic Cloud API',
-    version: '1.0.0',
-    timestamp: new Date().toISOString(),
-  });
-});
 
 // Unknown API routes
 app.use('/api', (req, res) => {

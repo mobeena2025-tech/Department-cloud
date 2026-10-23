@@ -1,6 +1,8 @@
 import express from 'express';
 import supabase from '../supabase.js';
 import { findCourse } from '../lib/courseLookup.js';
+import { requireRole } from '../lib/auth.js';
+import { visibleCourseIds, assertCanViewCourse } from '../lib/access.js';
 import {
   HttpError,
   asyncHandler,
@@ -26,7 +28,7 @@ function dbError(context, error) {
   return new HttpError(500, 'Database error');
 }
 
-// Group already-mapped rows by course id.
+// Group rows by course id.
 function groupByCourse(rows) {
   const map = new Map();
   for (const r of rows) {
@@ -36,12 +38,36 @@ function groupByCourse(rows) {
   return map;
 }
 
-// List courses (with counts)
+// Faculty names and enrollment counts for a set of courses.
+async function loadStaffAndEnrollment(courseIds) {
+  if (!courseIds.length) return { faculty: new Map(), enrolled: new Map() };
+  const [f, e] = await Promise.all([
+    supabase.from('course_faculty').select('course_id, profiles ( full_name )').in('course_id', courseIds),
+    supabase.from('enrollments').select('course_id').in('course_id', courseIds),
+  ]);
+  if (f.error) throw dbError('Course faculty lookup error', f.error);
+  if (e.error) throw dbError('Enrollment count error', e.error);
+
+  const faculty = new Map();
+  for (const r of f.data) {
+    if (!faculty.has(r.course_id)) faculty.set(r.course_id, []);
+    if (r.profiles?.full_name) faculty.get(r.course_id).push(r.profiles.full_name);
+  }
+  const enrolled = new Map();
+  for (const r of e.data) enrolled.set(r.course_id, (enrolled.get(r.course_id) || 0) + 1);
+  return { faculty, enrolled };
+}
+
+// List the courses this user can see (with counts)
 router.get('/', asyncHandler(async (req, res) => {
   const semester = optionalInt(req.query.semester, 'semester', { min: 1, max: 8 });
   const section = optionalString(req.query.section, 'section', { max: 2, pattern: SECTION_PATTERN });
 
+  const visible = await visibleCourseIds(req.user);
+  if (visible !== null && visible.length === 0) return res.json({ success: true, courses: [] });
+
   let query = supabase.from('courses').select('*').order('code');
+  if (visible !== null) query = query.in('id', visible);
   if (semester !== undefined) query = query.eq('semester', semester);
   if (section !== undefined) query = query.eq('section', section.toUpperCase());
 
@@ -61,6 +87,7 @@ router.get('/', asyncHandler(async (req, res) => {
     materials = m.data.map((r) => ({ courseId: r.course_id, unitNumber: Number(r.unit) || 1 }));
     assignments = a.data.map((r) => ({ courseId: r.course_id, unitNumber: r.unit_number, status: r.status }));
   }
+  const { faculty, enrolled } = await loadStaffAndEnrollment(ids);
 
   const mByCourse = groupByCourse(materials);
   const aByCourse = groupByCourse(assignments);
@@ -71,6 +98,8 @@ router.get('/', asyncHandler(async (req, res) => {
       toCourseResponse(c, {
         materials: mByCourse.get(c.id) || [],
         assignments: aByCourse.get(c.id) || [],
+        facultyNames: faculty.get(c.id) || [],
+        enrolledCount: enrolled.get(c.id) || 0,
       })
     ),
   });
@@ -81,6 +110,7 @@ router.get('/:id', asyncHandler(async (req, res) => {
   const { course, error } = await findCourse(req.params.id);
   if (error) throw dbError('Course lookup error', error);
   if (!course) throw new HttpError(404, 'Course not found');
+  await assertCanViewCourse(req.user, course.id);
 
   const [m, a] = await Promise.all([
     supabase.from('materials').select(MATERIAL_SELECT).eq('course_id', course.id).order('created_at', { ascending: false }),
@@ -88,19 +118,22 @@ router.get('/:id', asyncHandler(async (req, res) => {
   ]);
   if (m.error) throw dbError('Course materials error', m.error);
   if (a.error) throw dbError('Course assignments error', a.error);
+  const { faculty, enrolled } = await loadStaffAndEnrollment([course.id]);
 
   res.json({
     success: true,
     course: toCourseResponse(course, {
       materials: m.data.map(toMaterialResponse),
       assignments: a.data.map(toAssignmentResponse),
+      facultyNames: faculty.get(course.id) || [],
+      enrolledCount: enrolled.get(course.id) || 0,
       nested: true,
     }),
   });
 }));
 
-// Create a course (Admin)
-router.post('/', asyncHandler(async (req, res) => {
+// Create a course (admin only)
+router.post('/', requireRole('admin'), asyncHandler(async (req, res) => {
   const body = req.body || {};
   const code = requiredString(body.code, 'code', { max: 20, pattern: COURSE_CODE_PATTERN }).toUpperCase();
   const name = requiredString(body.title ?? body.name, 'title', { max: 150 });

@@ -18,9 +18,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 
 export default function TopNav({ onNavigate, currentPath }) {
-  const { currentUser, switchRole, logout, accessScope } = useAuth();
+  const { currentUser, logout, accessScope } = useAuth();
   const { addToast } = useNotification();
-  const [showRoleMenu, setShowRoleMenu] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -29,16 +28,6 @@ export default function TopNav({ onNavigate, currentPath }) {
     { id: 2, title: 'New Material: CNN Pooling.pdf', time: '2 hours ago', unread: true },
     { id: 3, title: 'Guest Lecture Announcement', time: 'Yesterday', unread: false },
   ];
-
-  const handleRoleChange = (roleKey, name) => {
-    switchRole(roleKey);
-    setShowRoleMenu(false);
-    addToast(`Switched active persona to ${name} (${roleKey.toUpperCase()})`, 'info', 'Role Changed');
-    // Navigate to role root
-    if (roleKey === 'student') onNavigate('/student');
-    if (roleKey === 'faculty') onNavigate('/faculty');
-    if (roleKey === 'admin') onNavigate('/admin');
-  };
 
   return (
     <header className="sticky top-0 z-30 bg-white border-b border-cloud-200/90 shadow-xs">
@@ -99,79 +88,15 @@ export default function TopNav({ onNavigate, currentPath }) {
             </span>
           </div>
 
-          {/* Quick 1-Click Role Switcher */}
-          <div className="relative">
-            <button
-              onClick={() => {
-                setShowRoleMenu(!showRoleMenu);
-                setShowUserMenu(false);
-                setShowNotifications(false);
-              }}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-cloud-100 hover:bg-cloud-200 text-cloud-800 text-xs font-semibold transition-colors border border-cloud-200 cursor-pointer"
-              title="Switch demo evaluation role"
-            >
-              <div className="flex items-center gap-1.5">
-                {currentUser?.role === 'student' && <GraduationCap className="w-4 h-4 text-brand-600" />}
-                {currentUser?.role === 'faculty' && <Briefcase className="w-4 h-4 text-emerald-600" />}
-                {currentUser?.role === 'admin' && <Shield className="w-4 h-4 text-purple-600" />}
-                <span className="capitalize">{currentUser?.role} View</span>
-              </div>
-              <ChevronDown className="w-3.5 h-3.5 text-cloud-500" />
-            </button>
-
-            {showRoleMenu && (
-              <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl shadow-xl border border-cloud-200 p-2 z-50 text-xs animate-in fade-in duration-150">
-                <div className="px-3 py-2 border-b border-cloud-100 mb-1">
-                  <div className="text-[10px] uppercase font-bold tracking-wider text-cloud-400">
-                    Demonstration Role Switcher
-                  </div>
-                  <div className="text-cloud-700 text-xs mt-0.5">
-                    Test role-based views and security boundaries:
-                  </div>
-                </div>
-
-                <div className="space-y-1">
-                  <button
-                    onClick={() => handleRoleChange('student', 'Demo Student A')}
-                    className={`w-full text-left p-2.5 rounded-lg flex items-start gap-2.5 transition-colors cursor-pointer ${
-                      currentUser?.role === 'student' ? 'bg-brand-50 border border-brand-200' : 'hover:bg-cloud-50'
-                    }`}
-                  >
-                    <GraduationCap className="w-4 h-4 text-brand-600 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <div className="font-semibold text-cloud-900">Student (Demo Student A)</div>
-                      <div className="text-[11px] text-cloud-500">Roll: DEMO-ROLL &bull; Enrolled Courses Only</div>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => handleRoleChange('faculty', 'Dr. Demo Faculty A')}
-                    className={`w-full text-left p-2.5 rounded-lg flex items-start gap-2.5 transition-colors cursor-pointer ${
-                      currentUser?.role === 'faculty' ? 'bg-emerald-50 border border-emerald-200' : 'hover:bg-cloud-50'
-                    }`}
-                  >
-                    <Briefcase className="w-4 h-4 text-emerald-600 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <div className="font-semibold text-cloud-900">Faculty (Dr. Demo Faculty A)</div>
-                      <div className="text-[11px] text-cloud-500">Course Lead AI204 &bull; Materials & Submissions</div>
-                    </div>
-                  </button>
-
-                  <button
-                    onClick={() => handleRoleChange('admin', 'Prof. Demo Head')}
-                    className={`w-full text-left p-2.5 rounded-lg flex items-start gap-2.5 transition-colors cursor-pointer ${
-                      currentUser?.role === 'admin' ? 'bg-purple-50 border border-purple-200' : 'hover:bg-cloud-50'
-                    }`}
-                  >
-                    <Shield className="w-4 h-4 text-purple-600 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <div className="font-semibold text-cloud-900">HOD / Admin (Prof. Demo Head)</div>
-                      <div className="text-[11px] text-cloud-500">Full Department Authority &bull; Audit Logs & Analytics</div>
-                    </div>
-                  </button>
-                </div>
-              </div>
-            )}
+          {/* Signed-in role (read-only) */}
+          <div
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cloud-100 text-cloud-800 text-xs font-semibold border border-cloud-200"
+            title="Your role is set by the department admin"
+          >
+            {currentUser?.role === 'student' && <GraduationCap className="w-4 h-4 text-brand-600" />}
+            {currentUser?.role === 'faculty' && <Briefcase className="w-4 h-4 text-emerald-600" />}
+            {currentUser?.role === 'admin' && <Shield className="w-4 h-4 text-purple-600" />}
+            <span className="capitalize">{currentUser?.role}</span>
           </div>
 
           {/* Notifications */}
@@ -179,7 +104,6 @@ export default function TopNav({ onNavigate, currentPath }) {
             <button
               onClick={() => {
                 setShowNotifications(!showNotifications);
-                setShowRoleMenu(false);
                 setShowUserMenu(false);
               }}
               className="p-2 rounded-xl text-cloud-600 hover:text-cloud-900 hover:bg-cloud-100 transition-colors relative cursor-pointer"
@@ -212,7 +136,6 @@ export default function TopNav({ onNavigate, currentPath }) {
             <button
               onClick={() => {
                 setShowUserMenu(!showUserMenu);
-                setShowRoleMenu(false);
                 setShowNotifications(false);
               }}
               className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-cloud-100 transition-colors cursor-pointer"

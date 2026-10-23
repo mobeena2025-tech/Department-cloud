@@ -1,7 +1,11 @@
 import express from 'express';
 import { store, recordAuditLog } from '../data/store.js';
+import { requireRole } from '../lib/auth.js';
 
 const router = express.Router();
+
+// User management is admin-only.
+router.use(requireRole('admin'));
 
 // List users with role filter
 router.get('/', (req, res) => {
@@ -69,9 +73,9 @@ router.post('/', (req, res) => {
   store.users.unshift(newUser);
 
   recordAuditLog({
-    actorName: 'Prof. Demo Head',
-    actorRole: 'admin',
-    actorEmail: 'demo.user@example.edu',
+    actorName: req.user.name,
+    actorRole: req.user.role,
+    actorEmail: req.user.email,
     action: 'CREATE_USER',
     resource: `${name} (${email}) - ${role}`,
     status: 'SUCCESS',

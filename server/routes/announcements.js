@@ -1,5 +1,6 @@
 import express from 'express';
 import { store, recordAuditLog } from '../data/store.js';
+import { requireRole } from '../lib/auth.js';
 
 const router = express.Router();
 
@@ -21,7 +22,7 @@ router.get('/', (req, res) => {
 });
 
 // Post new announcement (Faculty/Admin)
-router.post('/', (req, res) => {
+router.post('/', requireRole('faculty', 'admin'), (req, res) => {
   const {
     title,
     category = 'Department Notice',
@@ -29,7 +30,6 @@ router.post('/', (req, res) => {
     department = 'CSE - AI & ML',
     courseId = null,
     courseName = null,
-    author = 'Dr. Demo Faculty A',
     content,
     attachments = [],
   } = req.body;
@@ -46,7 +46,7 @@ router.post('/', (req, res) => {
     department,
     courseId,
     courseName,
-    author,
+    author: req.user.name,
     date: new Date().toISOString(),
     content,
     attachments: Array.isArray(attachments) ? attachments : [],
@@ -55,9 +55,9 @@ router.post('/', (req, res) => {
   store.announcements.unshift(newAnnouncement);
 
   recordAuditLog({
-    actorName: author,
-    actorRole: courseId ? 'faculty' : 'admin',
-    actorEmail: 'demo.user@example.edu',
+    actorName: req.user.name,
+    actorRole: req.user.role,
+    actorEmail: req.user.email,
     action: 'POST_ANNOUNCEMENT',
     resource: title,
     status: 'SUCCESS',

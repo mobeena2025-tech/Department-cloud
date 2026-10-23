@@ -1,11 +1,14 @@
 import express from 'express';
 import { store, recordAuditLog } from '../data/store.js';
+import { requireRole } from '../lib/auth.js';
 
 const router = express.Router();
 
 // List submissions with filtering
 router.get('/', (req, res) => {
-  const { assignmentId, studentId, courseId } = req.query;
+  const { assignmentId, courseId } = req.query;
+  // Students only ever see their own submissions.
+  const studentId = req.user.role === 'student' ? req.user.id : req.query.studentId;
 
   let list = [...store.submissions];
 
@@ -30,12 +33,16 @@ router.get('/:id', (req, res) => {
   if (!sub) {
     return res.status(404).json({ success: false, message: 'Submission not found' });
   }
+  if (req.user.role === 'student' && sub.studentId !== req.user.id) {
+    return res.status(403).json({ success: false, message: 'You can only view your own submissions' });
+  }
   res.json({ success: true, submission: sub });
 });
 
 // Student submits an assignment
-router.post('/', (req, res) => {
-  const { assignmentId, studentId = 'usr_student_1', fileName, fileSize = '3.5 MB', submissionText } = req.body;
+router.post('/', requireRole('student'), (req, res) => {
+  const { assignmentId, fileName, fileSize = '3.5 MB', submissionText } = req.body || {};
+  const studentId = req.user.id; // never from the request body
 
   if (!assignmentId) {
     return res.status(400).json({ success: false, message: 'Assignment ID is required' });
@@ -92,9 +99,10 @@ router.post('/', (req, res) => {
 });
 
 // Faculty grades a submission
-router.put('/:id/grade', (req, res) => {
+router.put('/:id/grade', requireRole('faculty', 'admin'), (req, res) => {
   const { id } = req.params;
-  const { grade, feedback, gradedBy = 'Dr. Demo Faculty A' } = req.body;
+  const { grade, feedback } = req.body || {};
+  const gradedBy = req.user.name;
 
   const sub = store.submissions.find(s => s.id === id);
   if (!sub) {
@@ -113,9 +121,9 @@ router.put('/:id/grade', (req, res) => {
   sub.gradedAt = new Date().toISOString();
 
   recordAuditLog({
-    actorName: gradedBy,
-    actorRole: 'faculty',
-    actorEmail: 'demo.user@example.edu',
+    actorName: req.user.name,
+    actorRole: req.user.role,
+    actorEmail: req.user.email,
     action: 'GRADE_SUBMISSION',
     resource: `Submission ${id} (Student: ${sub.studentName})`,
     status: 'SUCCESS',

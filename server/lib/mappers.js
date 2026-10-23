@@ -9,7 +9,8 @@ export function formatFileSize(bytes) {
 
 export const MATERIAL_SELECT = `
   *,
-  courses ( id, code, name, semester, section )
+  courses ( id, code, name, semester, section ),
+  uploader:profiles!materials_uploaded_by_fkey ( full_name )
 `;
 
 export const ASSIGNMENT_SELECT = `
@@ -38,7 +39,8 @@ export function toMaterialResponse(m) {
     size: formatFileSize(m.file_size),
 
     uploadDate: m.created_at ? new Date(m.created_at).toISOString().split('T')[0] : null,
-    uploadedBy: m.uploaded_by,
+    uploadedBy: m.uploader?.full_name || null,
+    uploadedById: m.uploaded_by,
     downloads: 0,
 
     tags: [],
@@ -92,7 +94,10 @@ function unitsFrom(unitNumbers) {
  * `materials` / `assignments` are arrays of already-mapped objects.
  * Pass `nested: true` to include them in full (course detail page).
  */
-export function toCourseResponse(c, { materials = [], assignments = [], nested = false } = {}) {
+export function toCourseResponse(
+  c,
+  { materials = [], assignments = [], facultyNames = [], enrolledCount = 0, nested = false } = {}
+) {
   const course = {
     id: c.id,
     code: c.code,
@@ -103,9 +108,8 @@ export function toCourseResponse(c, { materials = [], assignments = [], nested =
     department: c.department || null,
     description: c.description || null,
 
-    // Filled in once course_faculty / enrollments exist (Phase 3).
-    facultyName: null,
-    enrolledCount: 0,
+    facultyName: facultyNames.length ? facultyNames.join(', ') : null,
+    enrolledCount,
 
     materialsCount: materials.length,
     activeAssignmentsCount: assignments.filter((a) => a.status === 'Active').length,

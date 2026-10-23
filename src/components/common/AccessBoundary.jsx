@@ -1,9 +1,9 @@
 import React from 'react';
-import { ShieldAlert, ArrowLeft, UserCheck, Key, Lock } from 'lucide-react';
+import { ShieldAlert, ArrowLeft, Lock } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 export default function AccessBoundary({ allowedRoles = [], children, pageTitle = 'Restricted Department Resource' }) {
-  const { currentUser, switchRole } = useAuth();
+  const { currentUser } = useAuth();
 
   const userRole = currentUser?.role || 'student';
   const hasAccess = allowedRoles.length === 0 || allowedRoles.includes(userRole);
@@ -47,45 +47,24 @@ export default function AccessBoundary({ allowedRoles = [], children, pageTitle 
             <span className="font-semibold text-rose-700">{allowedRoles.map(r => r.toUpperCase()).join(' or ')}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-cloud-500">Security Audit Log:</span>
-            <span className="text-emerald-700">Intercepted & Recorded #SEC-LOG-{Date.now().toString().slice(-4)}</span>
+            <span className="text-cloud-500">Your Role:</span>
+            <span className="font-semibold text-cloud-800">{userRole.toUpperCase()}</span>
           </div>
         </div>
 
         <p className="text-xs text-cloud-500 leading-normal">
-          In production, this access violation triggers a security audit event and denies route execution. As an evaluator of this prototype, you can immediately switch to an authorized role below:
+          Your account does not have access to this page. If you think this is a mistake, contact the department admin.
         </p>
       </div>
 
-      {/* Switch role actions */}
       <div className="mt-8 pt-6 border-t border-cloud-100 flex flex-wrap items-center gap-3">
-        {allowedRoles.includes('faculty') && (
-          <button
-            onClick={() => switchRole('faculty')}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-medium shadow-xs transition-colors cursor-pointer"
-          >
-            <UserCheck className="w-4 h-4" />
-            Switch to Faculty (Dr. Demo Faculty A)
-          </button>
-        )}
-
-        {allowedRoles.includes('admin') && (
-          <button
-            onClick={() => switchRole('admin')}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-cloud-900 hover:bg-cloud-800 text-white text-xs font-medium shadow-xs transition-colors cursor-pointer"
-          >
-            <Key className="w-4 h-4" />
-            Switch to HOD/Admin (Prof. Demo Head)
-          </button>
-        )}
-
-        <button
-          onClick={() => switchRole('student')}
+        <a
+          href={`/${currentUser?.role || ''}`}
           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-cloud-100 hover:bg-cloud-200 text-cloud-700 text-xs font-medium transition-colors cursor-pointer"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to Student Dashboard
-        </button>
+          Back to my dashboard
+        </a>
       </div>
     </div>
   );

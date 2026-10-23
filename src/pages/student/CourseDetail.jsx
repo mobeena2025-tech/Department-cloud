@@ -26,6 +26,7 @@ export default function CourseDetail({ courseId = 'AI204', onNavigate }) {
   const [expandedUnits, setExpandedUnits] = useState([]); // expanded unit numbers
   const [selectedMaterial, setSelectedMaterial] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const { addToast } = useNotification();
 
   useEffect(() => {
@@ -37,7 +38,7 @@ export default function CourseDetail({ courseId = 'AI204', onNavigate }) {
           setExpandedUnits(res.course.units.map((u) => u.unitNumber));
         }
       } catch (err) {
-        addToast(err.message || 'Could not load this course', 'error', 'Course Unavailable');
+        setLoadError(err.message || 'Could not load this course');
       } finally {
         setLoading(false);
       }
@@ -61,8 +62,16 @@ export default function CourseDetail({ courseId = 'AI204', onNavigate }) {
 
   if (!course) {
     return (
-      <div className="p-8 text-center text-cloud-500 text-xs">
-        Course not found.
+      <div className="cloud-card p-8 text-center space-y-3">
+        <p className="text-sm font-semibold text-cloud-900">Course unavailable</p>
+        <p className="text-xs text-cloud-600">{loadError || 'Course not found.'}</p>
+        <button
+          onClick={() => onNavigate('/student/courses')}
+          className="inline-flex items-center gap-1.5 text-xs text-brand-700 font-semibold cursor-pointer"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to My Courses
+        </button>
       </div>
     );
   }
