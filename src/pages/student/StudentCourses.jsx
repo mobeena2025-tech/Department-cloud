@@ -66,11 +66,11 @@ export default function StudentCourses({ onNavigate }) {
               <div className="mt-4 pt-3 border-t border-cloud-100 space-y-2 text-xs text-cloud-600">
                 <div className="flex items-center justify-between">
                   <span className="text-cloud-400">Faculty In-charge:</span>
-                  <span className="font-medium text-cloud-900">{c.facultyName}</span>
+                  <span className="font-medium text-cloud-900">{c.facultyName || 'Not assigned'}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-cloud-400">Syllabus Breakdown:</span>
-                  <span className="font-medium text-cloud-900">{c.units?.length || 5} Units &bull; {c.materialsCount || 18} Documents</span>
+                  <span className="font-medium text-cloud-900">{c.units.length} Units &bull; {c.materialsCount} Documents</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-cloud-400">Academic Standing:</span>

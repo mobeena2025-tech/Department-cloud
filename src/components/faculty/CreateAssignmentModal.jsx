@@ -10,10 +10,15 @@ export default function CreateAssignmentModal({ isOpen, onClose, onCreated, cour
     title: '',
     courseId: courses[0]?.id || 'AI204',
     unitNumber: 2,
-    dueDate: '2026-09-28T23:59',
+    // Default due date: one week from now, 23:59 local time.
+    dueDate: (() => {
+      const d = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      const pad = (n) => String(n).padStart(2, '0');
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T23:59`;
+    })(),
     maxMarks: 25,
     description: '',
-    attachmentName: 'Assignment_Problem_Statement.pdf',
+    attachmentName: '',
   });
 
   if (!isOpen) return null;
@@ -27,7 +32,11 @@ export default function CreateAssignmentModal({ isOpen, onClose, onCreated, cour
 
     setSubmitting(true);
     try {
-      const res = await api.createAssignment(formData);
+      // Send the due date as an exact moment (the input has no time zone).
+      const res = await api.createAssignment({
+        ...formData,
+        dueDate: new Date(formData.dueDate).toISOString(),
+      });
       addToast(`Assignment "${formData.title}" published!`, 'success', 'Course Assessment');
       if (onCreated) onCreated(res.assignment);
       onClose();

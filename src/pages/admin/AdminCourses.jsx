@@ -51,7 +51,7 @@ export default function AdminCourses({ onNavigate }) {
       return (
         c.code.toLowerCase().includes(q) ||
         c.title.toLowerCase().includes(q) ||
-        c.facultyName.toLowerCase().includes(q)
+        (c.facultyName || '').toLowerCase().includes(q)
       );
     }
     return true;
@@ -112,15 +112,15 @@ export default function AdminCourses({ onNavigate }) {
               <div className="mt-4 pt-3 border-t border-cloud-100 space-y-1.5 text-xs text-cloud-600">
                 <div className="flex justify-between">
                   <span className="text-cloud-400">Course Lead:</span>
-                  <span className="font-medium text-cloud-900">{course.facultyName}</span>
+                  <span className="font-medium text-cloud-900">{course.facultyName || 'Not assigned'}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-cloud-400">Enrolled Students:</span>
-                  <span className="font-bold text-cloud-800 font-mono">{course.enrolledCount || 68}</span>
+                  <span className="font-bold text-cloud-800 font-mono">{course.enrolledCount}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-cloud-400">Published Resources:</span>
-                  <span className="font-bold text-brand-700 font-mono">{course.materialsCount || 18} Documents</span>
+                  <span className="font-bold text-brand-700 font-mono">{course.materialsCount} Documents</span>
                 </div>
               </div>
             </div>

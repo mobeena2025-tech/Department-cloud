@@ -26,7 +26,6 @@ export default function UploadMaterial({ onNavigate }) {
   // Form State
   const [courseId, setCourseId] = useState('');
   const [unitNumber, setUnitNumber] = useState(3);
-  const [semester, setSemester] = useState(6);
   const [materialType, setMaterialType] = useState('PDF Notes');
   const [title, setTitle] = useState('DBMS Unit 3 - Normalization & BCNF Notes.pdf');
   const [topic, setTopic] = useState('Relational Database Design, Functional Dependencies, and Normalization');
@@ -103,7 +102,6 @@ export default function UploadMaterial({ onNavigate }) {
     if (presetType === 'DBMS_NOTES') {
       selectCourseByCode('CS202');
       setUnitNumber(3);
-      setSemester(6);
       setMaterialType('PDF Notes');
       setTitle('DBMS Unit 3 - Normalization & BCNF Notes.pdf');
       setTopic('Relational Database Design, Functional Dependencies & Normalization');
@@ -112,7 +110,6 @@ export default function UploadMaterial({ onNavigate }) {
     } else if (presetType === 'DBMS_QP') {
       selectCourseByCode('CS202');
       setUnitNumber(3);
-      setSemester(6);
       setMaterialType('Question Paper');
       setTitle('Semester 6 DBMS Mid-Term Question Paper (2024).pdf');
       setTopic('Mid-Term Examination Question Bank & Model Solutions');
@@ -121,7 +118,6 @@ export default function UploadMaterial({ onNavigate }) {
     } else if (presetType === 'ANN_PPT') {
       selectCourseByCode('AI204');
       setUnitNumber(2);
-      setSemester(6);
       setMaterialType('PPT Presentation');
       setTitle('ANN Unit 2 - Deep Neural Networks & Backprop Slides.pptx');
       setTopic('Multivariate Chain Rule, Activation Derivatives & Gradient Flow');
@@ -353,20 +349,12 @@ export default function UploadMaterial({ onNavigate }) {
                 <label className="block text-xs font-semibold text-cloud-700 mb-1">
                   Academic Semester
                 </label>
-                <select
-                  value={semester}
-                  onChange={(e) => setSemester(Number(e.target.value))}
-                  className="w-full px-3 py-2 rounded-xl border border-cloud-200 text-xs text-cloud-900 bg-white focus:outline-none focus:border-brand-500"
-                >
-                  <option value={1}>Semester 1</option>
-                  <option value={2}>Semester 2</option>
-                  <option value={3}>Semester 3</option>
-                  <option value={4}>Semester 4</option>
-                  <option value={5}>Semester 5</option>
-                  <option value={6}>Semester 6 (Current Active)</option>
-                  <option value={7}>Semester 7</option>
-                  <option value={8}>Semester 8</option>
-                </select>
+                {/* The semester comes from the selected course. */}
+                <div className="w-full px-3 py-2 rounded-xl border border-cloud-200 text-xs text-cloud-700 bg-cloud-50">
+                  {courses.find((c) => c.id === courseId)?.semester
+                    ? `Semester ${courses.find((c) => c.id === courseId).semester}`
+                    : '—'}
+                </div>
               </div>
 
               {/* Unit Number */}

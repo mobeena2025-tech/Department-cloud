@@ -23,7 +23,7 @@ import { useNotification } from '../../context/NotificationContext';
 export default function CourseDetail({ courseId = 'AI204', onNavigate }) {
   const [course, setCourse] = useState(null);
   const [activeTab, setActiveTab] = useState('materials'); // 'materials' | 'overview' | 'assignments' | 'announcements'
-  const [expandedUnits, setExpandedUnits] = useState([1, 2, 3]); // expanded unit indices
+  const [expandedUnits, setExpandedUnits] = useState([]); // expanded unit numbers
   const [selectedMaterial, setSelectedMaterial] = useState(null);
   const [loading, setLoading] = useState(true);
   const { addToast } = useNotification();
@@ -34,7 +34,10 @@ export default function CourseDetail({ courseId = 'AI204', onNavigate }) {
         const res = await api.getCourse(courseId);
         if (res?.course) {
           setCourse(res.course);
+          setExpandedUnits(res.course.units.map((u) => u.unitNumber));
         }
+      } catch (err) {
+        addToast(err.message || 'Could not load this course', 'error', 'Course Unavailable');
       } finally {
         setLoading(false);
       }
@@ -48,10 +51,18 @@ export default function CourseDetail({ courseId = 'AI204', onNavigate }) {
     );
   };
 
-  if (loading || !course) {
+  if (loading) {
     return (
       <div className="p-8 text-center text-cloud-500 text-xs">
         Loading departmental course records...
+      </div>
+    );
+  }
+
+  if (!course) {
+    return (
+      <div className="p-8 text-center text-cloud-500 text-xs">
+        Course not found.
       </div>
     );
   }
@@ -80,7 +91,7 @@ export default function CourseDetail({ courseId = 'AI204', onNavigate }) {
                 {course.credits} Academic Credits
               </span>
               <span className="text-xs text-cloud-500">
-                Semester {course.semester} &bull; {course.department}
+                Semester {course.semester}{course.department ? <> &bull; {course.department}</> : null}
               </span>
             </div>
 
@@ -91,15 +102,15 @@ export default function CourseDetail({ courseId = 'AI204', onNavigate }) {
             <div className="flex items-center gap-4 mt-3 text-xs text-cloud-600">
               <div className="flex items-center gap-1.5">
                 <User className="w-4 h-4 text-brand-600" />
-                <span>Instructor: <strong className="text-cloud-900">{course.facultyName}</strong></span>
+                <span>Instructor: <strong className="text-cloud-900">{course.facultyName || 'Not assigned'}</strong></span>
               </div>
               <div className="flex items-center gap-1.5">
                 <Layers className="w-4 h-4 text-brand-600" />
-                <span>{course.units?.length || 5} Syllabus Units</span>
+                <span>{course.units.length} {course.units.length === 1 ? 'Unit' : 'Units'} with content</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <BookOpen className="w-4 h-4 text-brand-600" />
-                <span>{course.materials?.length || 22} Verified Materials</span>
+                <span>{course.materials.length} {course.materials.length === 1 ? 'Material' : 'Materials'}</span>
               </div>
             </div>
           </div>
@@ -172,8 +183,13 @@ export default function CourseDetail({ courseId = 'AI204', onNavigate }) {
       {/* Tab: Unit Courseware Materials (as explicitly required in prompt) */}
       {activeTab === 'materials' && (
         <div className="space-y-4">
-          {course.units?.map((unit) => {
-            const unitMaterials = course.materials?.filter((m) => m.unitNumber === unit.unitNumber) || [];
+          {course.units.length === 0 && (
+            <div className="cloud-card p-8 text-center text-cloud-500 text-xs">
+              No materials uploaded for this course yet.
+            </div>
+          )}
+          {course.units.map((unit) => {
+            const unitMaterials = course.materials.filter((m) => m.unitNumber === unit.unitNumber);
             const isExpanded = expandedUnits.includes(unit.unitNumber);
 
             return (
@@ -189,7 +205,7 @@ export default function CourseDetail({ courseId = 'AI204', onNavigate }) {
                     </span>
                     <div>
                       <h3 className="text-sm font-bold text-cloud-900">
-                        Unit {unit.unitNumber}: {unit.title}
+                        Unit {unit.unitNumber}{unit.title ? `: ${unit.title}` : ''}
                       </h3>
                       <p className="text-[11px] text-cloud-500">
                         {unitMaterials.length} materials published
@@ -262,7 +278,7 @@ export default function CourseDetail({ courseId = 'AI204', onNavigate }) {
           <div className="cloud-card p-6">
             <h3 className="text-sm font-bold text-cloud-900 mb-2">Course Abstract</h3>
             <p className="text-xs text-cloud-700 leading-relaxed">
-              {course.description}
+              {course.description || 'No course description has been added yet.'}
             </p>
           </div>
 

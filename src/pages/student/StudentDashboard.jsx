@@ -168,12 +168,12 @@ export default function StudentDashboard({ onNavigate }) {
                     </h3>
 
                     <p className="text-xs text-cloud-500 mt-1">
-                      Faculty: <span className="font-medium text-cloud-700">{course.facultyName}</span>
+                      Faculty: <span className="font-medium text-cloud-700">{course.facultyName || 'Not assigned'}</span>
                     </p>
                   </div>
 
                   <div className="mt-4 pt-3 border-t border-cloud-100 flex items-center justify-between text-xs text-cloud-500">
-                    <span>{course.materialsCount || 18} Materials</span>
+                    <span>{course.materialsCount} Materials</span>
                     <span className="text-brand-600 font-semibold flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
                       <span>Open Course</span>
                       <ArrowRight className="w-3 h-3" />

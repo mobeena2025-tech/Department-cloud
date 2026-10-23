@@ -109,7 +109,7 @@ export default function FacultyDashboard({ onNavigate }) {
         />
         <StatCard
           title="Pending Submissions"
-          value={`${pendingSubmissionsCount || 19} Pending`}
+          value={`${pendingSubmissionsCount} Pending`}
           subtitle="Ready for Faculty Evaluation"
           trend="Action Needed"
           color="amber"
@@ -172,15 +172,15 @@ export default function FacultyDashboard({ onNavigate }) {
                   <div className="mt-4 pt-3 border-t border-cloud-100 grid grid-cols-3 gap-2 text-center text-xs">
                     <div>
                       <span className="text-cloud-400 block text-[10px]">Students</span>
-                      <span className="font-bold text-cloud-800">{course.enrolledCount || 68}</span>
+                      <span className="font-bold text-cloud-800">{course.enrolledCount}</span>
                     </div>
                     <div>
                       <span className="text-cloud-400 block text-[10px]">Materials</span>
-                      <span className="font-bold text-cloud-800">{course.materialsCount || 22}</span>
+                      <span className="font-bold text-cloud-800">{course.materialsCount}</span>
                     </div>
                     <div>
                       <span className="text-cloud-400 block text-[10px]">Assignments</span>
-                      <span className="font-bold text-cloud-800">{course.activeAssignmentsCount || 2}</span>
+                      <span className="font-bold text-cloud-800">{course.activeAssignmentsCount}</span>
                     </div>
                   </div>
                 </div>
