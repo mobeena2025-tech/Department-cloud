@@ -67,7 +67,7 @@ export default function AdminActivity() {
             </span>
           </div>
           <p className="text-xs text-cloud-500 mt-0.5">
-            Immutable chronological record of academic uploads, metadata modifications, downloads, and access boundary evaluations
+            Chronological record of sign-ins, uploads, file opens, submissions, grades and denied access attempts
           </p>
         </div>
 
@@ -111,7 +111,7 @@ export default function AdminActivity() {
       <div className="cloud-card overflow-hidden">
         <div className="px-6 py-3 border-b border-cloud-200 bg-cloud-50/70 flex items-center justify-between text-xs font-semibold text-cloud-500">
           <span>{filtered.length} Audit Events Recorded</span>
-          <span>Access Boundary Integrity: Verified</span>
+          <span>Newest first, up to 200 events</span>
         </div>
 
         <div className="divide-y divide-cloud-100">

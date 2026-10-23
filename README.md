@@ -1,0 +1,213 @@
+# Department Academic Cloud
+
+A department portal where faculty upload course PDFs, enrolled students find and
+open them, and anyone not enrolled is denied. It also has assignments with PDF
+submissions and grading, announcements, an audit log, admin analytics and a
+simple search assistant.
+
+**Stack:** React 18 + Vite + Tailwind (frontend) · Express (backend, `server/`) ·
+Supabase Postgres, Auth and Storage. Frontend and backend share one `package.json`;
+Vite proxies `/api` to the Express server on port 5000.
+
+---
+
+## How it works (in one minute)
+
+- **The browser never talks to Supabase.** Every request goes to the Express API,
+  which uses the server-only **secret key**.
+- **Sign-in** uses Supabase Auth (email + password) via `POST /api/auth/login`.
+  The browser keeps the access token and sends it as `Authorization: Bearer …`.
+- **Every API route needs a valid token** except `GET /api/health` and
+  `POST /api/auth/login` / `refresh`. The server checks the token with Supabase and
+  reads the user's role from the `profiles` table. Who is uploading, grading or
+  posting is always taken from the token, never from the request body.
+- **Course access:**
+
+  | Role | Sees | Can upload / edit / delete / grade |
+  |---|---|---|
+  | `admin` (HOD) | all courses | everything; only admin creates courses and accounts |
+  | `faculty` | courses they teach (`course_faculty`) | only in courses they teach |
+  | `student` | courses they're enrolled in (`enrollments`) | submit their own work |
+
+- **Files** are stored in a **private** Supabase Storage bucket (`academic-materials`).
+  Opening a file asks the API, which checks access **first** and only then returns a
+  link that expires after one hour. Denied attempts are written to the audit log.
+- **Database lock-down:** Row Level Security is on for every table with no policies,
+  and the public (anon) role has no privileges, so the publishable key can't read
+  or change anything.
+
+---
+
+## Setup
+
+### 1. Requirements
+
+- Node.js 20 or newer (tested with 22) and npm
+- A free Supabase account: <https://supabase.com>
+
+### 2. Install
+
+```bash
+npm ci
+```
+
+### 3. Create the database
+
+1. In Supabase, create a **new project** (any name; pick the region nearest to you).
+2. Open **SQL Editor → New query**, paste all of [`supabase/schema.sql`](supabase/schema.sql), click **Run**.
+3. New query again, paste [`supabase/seed.sql`](supabase/seed.sql), click **Run**.
+   This adds 4 sample courses and 3 sample assignments.
+4. Recommended: **Authentication → Sign In / Providers → Email** → turn off
+   **Allow new users to sign up**. (Accounts are created by the seed script or by an
+   admin. A self-signed-up account has no role and the API refuses it anyway.)
+
+> `supabase/migrations/000–005` are the same changes applied step by step to the
+> original project. You don't need them for a new project.
+
+### 4. Environment variables
+
+Copy `.env.example` to `.env` and fill it in:
+
+| Variable | Where to find it | Notes |
+|---|---|---|
+| `SUPABASE_URL` | Project Settings → Data API → Project URL | `https://<ref>.supabase.co` |
+| `SUPABASE_SECRET_KEY` | Project Settings → API Keys → **Secret keys** | starts with `sb_secret_`. **Server only, never share it.** The server refuses to start with a publishable key. (The older name `SUPABASE_KEY` also works.) |
+| `API_PORT` | – | default `5000` (Vite proxies `/api` here) |
+| `CORS_ORIGIN` | – | default `http://localhost:3000` |
+
+`.env` is git-ignored. Nothing in `src/` reads these variables, so no key ends up
+in the browser bundle.
+
+### 5. Create the demo accounts
+
+```bash
+npm run seed
+```
+
+This creates 1 admin, 2 faculty and 3 students, assigns faculty to courses and
+enrolls the students. It picks a **random password** for all of them and writes the
+logins to `seed-credentials.txt` (git-ignored). Running it again sets a new password.
+
+| Email | Role | Courses |
+|---|---|---|
+| `admin@dac.test` | admin | all |
+| `faculty.a@dac.test` | faculty | teaches CS202, AI204 |
+| `faculty.b@dac.test` | faculty | teaches CS301, AI302 |
+| `student.a@dac.test` | student | CS202, AI204, CS301 |
+| `student.b@dac.test` | student | CS202, AI302 |
+| `student.c@dac.test` | student | CS301 only (the "not enrolled" student) |
+
+### 6. Run
+
+```bash
+npm run dev
+```
+
+Open <http://localhost:3000>. (`npm run dev` starts both the API on 5000 and Vite on 3000.)
+
+---
+
+## Demo script
+
+Use the password from `seed-credentials.txt`.
+
+1. **Faculty uploads.** Sign in as `faculty.a@dac.test`. Go to **Upload Material**.
+   The course list only shows CS202 and AI204. Choose a PDF (max 10 MB), pick
+   **CS202**, enter a title, click **Publish to Department Cloud**. The success
+   banner shows the storage path `courses/<course-id>/…`. Sign out (avatar → Sign Out).
+2. **Enrolled student opens it.** Sign in as `student.a@dac.test`. Open **Courses →
+   CS202** (or go to `/courses/CS202`). The new file is listed under its unit. Click it,
+   then **Open / Download**: the PDF opens in a new tab through a short-lived link.
+   Sign out.
+3. **Unenrolled student is denied.** Sign in as `student.c@dac.test`. CS202 is not in his
+   course list, and going to `/courses/CS202` shows *"Course unavailable — You are not
+   enrolled in or assigned to this course."* The API refuses the file itself with 403
+   before any link is created. Sign out.
+4. **Admin sees the denial.** Sign in as `admin@dac.test` → **Activity & Audit**: Student C's
+   attempt appears as `OPEN_MATERIAL` / `DENIED`. The **Dashboard** and the analytics page
+   (`/admin/analytics`) show live counts from the database.
+
+Optional extras: as Student A, submit a PDF for *Normalization worksheet* under
+**Assignments**; as Faculty A, grade it under **Submissions** (the grading screen opens
+his PDF; it is at `/faculty/submissions`, linked from **Assignments**); post a course notice under **Announcements**; ask the **Assistant**
+"Find DBMS unit 3 material".
+
+---
+
+## Scripts
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | API (port 5000) + Vite dev server (port 3000) |
+| `npm run build` | production build of the frontend into `dist/` |
+| `npm test` | server tests (Node's built-in test runner) |
+| `npm run lint` | ESLint (0 errors; remaining warnings are unused imports in older pages) |
+| `npm run seed` | create/refresh demo accounts, teaching assignments and enrollments |
+
+### Tests
+
+`test/` covers the highest-risk server paths:
+
+- **auth** — every protected route returns 401 without a token; forged/old demo
+  tokens are rejected; a login without a profile gets 403; admin-only routes refuse
+  other roles; the role can't be set from the request.
+- **material access control** — enrolled students get a signed URL; unenrolled
+  students and other faculty get 403 **and no signed URL is created**; the denial is
+  audit-logged; lists only show accessible courses; only the course's faculty can
+  edit/delete; delete removes the storage object.
+- **upload validation** — MIME type **and** `.pdf` extension **and** `%PDF-` bytes
+  required; >10 MB → 413; the course is checked before anything is uploaded (no
+  orphaned files); uploads go to `courses/<course-id>/…` and record the real uploader.
+
+The tests replace the Supabase client with an in-memory fake, so they need no
+network and never touch your project. They test the API's own checks, not
+Supabase's Row Level Security.
+
+---
+
+## Project layout
+
+```
+server/
+  app.js              Express app: CORS, public routes, auth gate, routes, error handler
+  index.js            starts the server
+  supabase.js         server-only Supabase client (secret key)
+  lib/                auth middleware, course access rules, validation, PDF upload,
+                      audit log, response shapes
+  routes/             auth, courses, materials, assignments, submissions,
+                      announcements, users, audit-logs, analytics, ai-search
+  services/           assistant (keyword search), classifier (file-name suggestions)
+  scripts/seed.js     demo accounts + enrollments
+src/                  React app (pages per role, components, api client)
+supabase/
+  schema.sql          full database: tables, RLS lock-down, private bucket
+  seed.sql            sample courses and assignments
+  migrations/         step-by-step history used on the original project
+test/                 server tests
+```
+
+---
+
+## Known limitations
+
+- **Assistant is a prototype.** It matches words in material/assignment titles, topics
+  and descriptions within your own courses. It does not read PDF contents and does not
+  generate answers; the page says so.
+- **Smart Upload suggestions** come from simple keywords in the file name, not from the
+  PDF; faculty should check them.
+- **No admin screen for enrollments or faculty assignment** yet. `npm run seed` sets
+  them up; to change them, edit `course_faculty` / `enrollments` in the Supabase Table
+  Editor. The "Faculty" field on the admin "Add Course" form is not used.
+- **Analytics activity numbers** (file opens, sign-ins, searches) start from when the
+  audit log was added; there is no older history.
+- `npm run lint` reports warnings (mostly unused icon imports) in pages that were not
+  otherwise changed.
+
+## Troubleshooting
+
+| Symptom | Cause / fix |
+|---|---|
+| `getaddrinfo ENOTFOUND <ref>.supabase.co` | Wrong `SUPABASE_URL`, or the project is paused (free projects pause after a week idle; click **Restore** in the dashboard). |
+| Server says it needs the SECRET key | `.env` has the publishable key; use the `sb_secret_…` key. |
+| Every page sends you back to sign-in | Session expired or the account has no `profiles` row; sign in again / run `npm run seed`. |
+| `EADDRINUSE :::5000` | Something else uses port 5000; set `API_PORT` and change the proxy target in `vite.config.js`. |
