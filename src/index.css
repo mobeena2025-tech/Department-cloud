@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-cloud-50 text-cloud-900 selection:bg-brand-500 selection:text-white;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Custom subtle scrollbars */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-cloud-300 rounded-full hover:bg-cloud-400 transition-colors;
+  }
+}
+
+/* Custom glass / cloud subtle borders */
+.cloud-card {
+  @apply bg-white border border-cloud-200/80 rounded-xl shadow-sm transition-all;
+}
+
+.cloud-card-hover {
+  @apply hover:border-brand-300 hover:shadow-md transition-all duration-200;
+}
+
+.badge-pill {
+  @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+}
