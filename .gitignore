@@ -6,3 +6,6 @@ dist/
 *.log
 .claude/
 seed-credentials.txt
+
+# Real people data and generated passwords: never commit
+private/

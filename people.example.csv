@@ -1,0 +1,4 @@
+name,email,role,roll_number,semester,section,courses
+Example Teacher,teacher@example.edu,faculty,,,,CS202;AI204
+Example Student One,student1@example.edu,student,EX-001,6,A,CS202;AI204;CS301
+Example Student Two,student2@example.edu,student,EX-002,6,A,CS301

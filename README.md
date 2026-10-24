@@ -146,6 +146,33 @@ Sign in as admin → **Courses** → **Manage People** on any course card:
 
 New accounts are created under **Users & Roles**; then enroll them here.
 
+### Importing real accounts from a spreadsheet
+
+For a whole class at once, use a CSV file in the **`private/`** folder (git-ignored, so
+real names and emails can never be committed). See [`people.example.csv`](people.example.csv)
+for the format:
+
+```
+name,email,role,roll_number,semester,section,courses
+```
+
+`role` is `admin`, `faculty` or `student`; `courses` is a list of course codes separated
+by `;` (students are enrolled in them, faculty teach them).
+
+```bash
+npm run import-people -- private/people.csv --dry-run
+```
+```bash
+npm run import-people -- private/people.csv
+```
+
+- `--dry-run` checks every row (emails, roles, duplicates, course codes) and changes nothing.
+- New accounts get their own random password, written only to
+  `private/people-credentials-<date>.csv`. Share each password privately.
+- Running it again updates existing people and adds courses; it never duplicates accounts
+  or changes their passwords (add `--reset-passwords` to issue new ones).
+- Only add people who have agreed to have an account; it is their personal data.
+
 ---
 
 ## Scripts

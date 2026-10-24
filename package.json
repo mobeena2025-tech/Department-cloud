@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "seed": "node server/scripts/seed.js",
     "test": "node --test test/*.test.js",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "import-people": "node server/scripts/importPeople.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.2",
