@@ -1,21 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { BookOpen, Plus, Search, User, Layers, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Plus, Search, Users, ArrowRight } from 'lucide-react';
 import { api } from '../../services/api';
 import { useNotification } from '../../context/NotificationContext';
+import CoursePeopleModal from '../../components/admin/CoursePeopleModal';
+
+const EMPTY_COURSE = {
+  code: '',
+  title: '',
+  department: 'CSE - AI & ML',
+  semester: 6,
+  credits: 3,
+  facultyId: '',
+  description: '',
+};
 
 export default function AdminCourses({ onNavigate }) {
   const [courses, setCourses] = useState([]);
   const [query, setQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [newCourse, setNewCourse] = useState({
-    code: 'AI401',
-    title: 'Reinforcement Learning & Robotics',
-    department: 'CSE - AI & ML',
-    semester: 7,
-    credits: 4,
-    facultyName: 'Dr. Demo Faculty A',
-    description: 'Markov decision processes, Q-learning, policy gradients, deep Q-networks (DQN), and continuous control robotics.',
-  });
+  const [newCourse, setNewCourse] = useState(EMPTY_COURSE);
+  const [facultyList, setFacultyList] = useState([]);
+  const [managingCourse, setManagingCourse] = useState(null);
   const [submitting, setSubmitting] = useState(false);
   const { addToast } = useNotification();
 
@@ -28,15 +33,19 @@ export default function AdminCourses({ onNavigate }) {
 
   useEffect(() => {
     loadCourses();
+    api.getUsers({ role: 'faculty' })
+      .then((res) => setFacultyList(res?.users || []))
+      .catch(() => {});
   }, []);
 
   const handleAddCourse = async (e) => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const res = await api.createCourse(newCourse);
-      addToast(`Course "${newCourse.code}: ${newCourse.title}" created in department cloud!`, 'success', 'Course Provisioned');
+      await api.createCourse({ ...newCourse, facultyId: newCourse.facultyId || undefined });
+      addToast(`Course "${newCourse.code.toUpperCase()}: ${newCourse.title}" created.`, 'success', 'Course Created');
       setShowAddModal(false);
+      setNewCourse(EMPTY_COURSE);
       await loadCourses();
     } catch (err) {
       addToast(err.message, 'error', 'Creation Failed');
@@ -126,10 +135,13 @@ export default function AdminCourses({ onNavigate }) {
             </div>
 
             <div className="mt-4 pt-3 border-t border-cloud-100 flex items-center justify-between text-xs">
-              <span className="text-emerald-700 font-semibold flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                Accredited Curriculum
-              </span>
+              <button
+                onClick={() => setManagingCourse(course)}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-50 hover:bg-brand-100 text-brand-700 font-semibold border border-brand-200 cursor-pointer"
+              >
+                <Users className="w-3.5 h-3.5" />
+                Manage People
+              </button>
               <button
                 onClick={() => onNavigate(`/courses/${course.id}`)}
                 className="text-brand-600 hover:text-brand-700 font-bold flex items-center gap-1 cursor-pointer"
@@ -190,15 +202,32 @@ export default function AdminCourses({ onNavigate }) {
                 />
               </div>
 
-              <div>
-                <label className="block font-semibold text-cloud-700 mb-1">Faculty In-Charge</label>
-                <input
-                  type="text"
-                  required
-                  value={newCourse.facultyName}
-                  onChange={(e) => setNewCourse({ ...newCourse, facultyName: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-cloud-200 text-cloud-900"
-                />
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-cloud-700 mb-1">Semester</label>
+                  <select
+                    value={newCourse.semester}
+                    onChange={(e) => setNewCourse({ ...newCourse, semester: Number(e.target.value) })}
+                    className="w-full px-3 py-2 rounded-xl border border-cloud-200 text-cloud-900 bg-white"
+                  >
+                    {[1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+                      <option key={n} value={n}>Semester {n}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-semibold text-cloud-700 mb-1">Faculty In-Charge</label>
+                  <select
+                    value={newCourse.facultyId}
+                    onChange={(e) => setNewCourse({ ...newCourse, facultyId: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-cloud-200 text-cloud-900 bg-white"
+                  >
+                    <option value="">Assign later</option>
+                    {facultyList.map((f) => (
+                      <option key={f.id} value={f.id}>{f.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
               <div>
@@ -230,6 +259,15 @@ export default function AdminCourses({ onNavigate }) {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Manage faculty and enrollments for one course */}
+      {managingCourse && (
+        <CoursePeopleModal
+          course={managingCourse}
+          onClose={() => setManagingCourse(null)}
+          onChanged={loadCourses}
+        />
       )}
 
     </div>

@@ -132,6 +132,20 @@ Optional extras: as Student A, submit a PDF for *Normalization worksheet* under
 his PDF; it is at `/faculty/submissions`, linked from **Assignments**); post a course notice under **Announcements**; ask the **Assistant**
 "Find DBMS unit 3 material".
 
+### Managing who teaches and who is enrolled
+
+Sign in as admin → **Courses** → **Manage People** on any course card:
+
+- **Teaching Faculty:** choose a faculty account and click **Assign**, or click the bin
+  icon to remove. Assigned faculty can upload, post notices, create assignments and grade
+  in that course.
+- **Enrolled Students:** search, tick one or more students and click **Enroll selected**,
+  or click the bin icon to remove. Only enrolled students can see the course and open its
+  files. Changes apply immediately.
+- **Add Department Course** also lets you pick the faculty in-charge when creating a course.
+
+New accounts are created under **Users & Roles**; then enroll them here.
+
 ---
 
 ## Scripts
@@ -174,7 +188,7 @@ server/
   supabase.js         server-only Supabase client (secret key)
   lib/                auth middleware, course access rules, validation, PDF upload,
                       audit log, response shapes
-  routes/             auth, courses, materials, assignments, submissions,
+  routes/             auth, courses (+ people/enrollment), materials, assignments, submissions,
                       announcements, users, audit-logs, analytics, ai-search
   services/           assistant (keyword search), classifier (file-name suggestions)
   scripts/seed.js     demo accounts + enrollments
@@ -195,9 +209,9 @@ test/                 server tests
   generate answers; the page says so.
 - **Smart Upload suggestions** come from simple keywords in the file name, not from the
   PDF; faculty should check them.
-- **No admin screen for enrollments or faculty assignment** yet. `npm run seed` sets
-  them up; to change them, edit `course_faculty` / `enrollments` in the Supabase Table
-  Editor. The "Faculty" field on the admin "Add Course" form is not used.
+- **Enrollment is per student and per course.** There is no bulk import (e.g. from a
+  CSV) or "enroll the whole semester" button; the Manage People window lets you tick
+  several students at once.
 - **Analytics activity numbers** (file opens, sign-ins, searches) start from when the
   audit log was added; there is no older history.
 - `npm run lint` reports warnings (mostly unused icon imports) in pages that were not
@@ -210,4 +224,5 @@ test/                 server tests
 | `getaddrinfo ENOTFOUND <ref>.supabase.co` | Wrong `SUPABASE_URL`, or the project is paused (free projects pause after a week idle; click **Restore** in the dashboard). |
 | Server says it needs the SECRET key | `.env` has the publishable key; use the `sb_secret_…` key. |
 | Every page sends you back to sign-in | Session expired or the account has no `profiles` row; sign in again / run `npm run seed`. |
-| `EADDRINUSE :::5000` | Something else uses port 5000; set `API_PORT` and change the proxy target in `vite.config.js`. |
+| `EADDRINUSE :::5000` | Something else uses port 5000 (often another `npm run dev` you left open). Stop it with Ctrl + C, or set `API_PORT` in `.env`; the Vite proxy follows it. |
+| A new feature is missing | The API doesn't reload by itself. Stop `npm run dev` (Ctrl + C) and start it again. |

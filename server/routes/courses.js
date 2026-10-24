@@ -1,7 +1,8 @@
 import express from 'express';
 import supabase from '../supabase.js';
-import { findCourse } from '../lib/courseLookup.js';
-import { requireRole } from '../lib/auth.js';
+import { findCourse, isUuid } from '../lib/courseLookup.js';
+import { requireRole, toUserResponse } from '../lib/auth.js';
+import { recordAuditLog } from '../lib/audit.js';
 import { visibleCourseIds, assertCanViewCourse } from '../lib/access.js';
 import {
   HttpError,
@@ -138,7 +139,42 @@ router.get('/:id', asyncHandler(async (req, res) => {
   });
 }));
 
-// Create a course (admin only)
+// ---------------------------------------------------------------- helpers
+
+async function loadCourseOr404(idOrCode) {
+  const { course, error } = await findCourse(idOrCode);
+  if (error) throw dbError('Course lookup error', error);
+  if (!course) throw new HttpError(404, 'Course not found');
+  return course;
+}
+
+// Load a profile and make sure it has the expected role.
+async function loadPersonWithRole(userId, role) {
+  if (!isUuid(userId)) throw new HttpError(400, 'Invalid user id');
+  const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
+  if (error) throw dbError('Profile lookup error', error);
+  if (!data) throw new HttpError(404, 'User not found');
+  if (data.role !== role) throw new HttpError(400, `${data.full_name} is not a ${role} account`);
+  return data;
+}
+
+async function assignFaculty(req, course, facultyId) {
+  const person = await loadPersonWithRole(facultyId, 'faculty');
+  const { error } = await supabase
+    .from('course_faculty')
+    .upsert({ course_id: course.id, faculty_id: person.id }, { ignoreDuplicates: true });
+  if (error) throw dbError('Assign faculty error', error);
+  recordAuditLog(req, {
+    action: 'ASSIGN_FACULTY',
+    resource: `${person.full_name} -> ${course.code}`,
+    courseId: course.id,
+  });
+  return person;
+}
+
+// ---------------------------------------------------------------- create
+
+// Create a course (admin only). Optional facultyId assigns its teacher.
 router.post('/', requireRole('admin'), asyncHandler(async (req, res) => {
   const body = req.body || {};
   const code = requiredString(body.code, 'code', { max: 20, pattern: COURSE_CODE_PATTERN }).toUpperCase();
@@ -148,6 +184,9 @@ router.post('/', requireRole('admin'), asyncHandler(async (req, res) => {
   const credits = optionalInt(body.credits, 'credits', { min: 1, max: 10 }) ?? 3;
   const description = optionalString(body.description, 'description', { max: 2000 }) ?? null;
   const department = optionalString(body.department, 'department', { max: 100 }) ?? null;
+  const facultyId = optionalString(body.facultyId, 'facultyId', { max: 40 });
+  // Check the teacher before creating anything.
+  if (facultyId) await loadPersonWithRole(facultyId, 'faculty');
 
   const { data, error } = await supabase
     .from('courses')
@@ -160,7 +199,99 @@ router.post('/', requireRole('admin'), asyncHandler(async (req, res) => {
     throw dbError('Course insert error', error);
   }
 
-  res.status(201).json({ success: true, course: toCourseResponse(data) });
+  recordAuditLog(req, { action: 'CREATE_COURSE', resource: `${code}: ${name}`, courseId: data.id });
+  let facultyNames = [];
+  if (facultyId) facultyNames = [(await assignFaculty(req, data, facultyId)).full_name];
+
+  res.status(201).json({ success: true, course: toCourseResponse(data, { facultyNames }) });
+}));
+
+// ---------------------------------------------------------------- people (admin)
+
+// Who teaches the course and who is enrolled in it.
+router.get('/:id/people', requireRole('admin'), asyncHandler(async (req, res) => {
+  const course = await loadCourseOr404(req.params.id);
+  const [f, e] = await Promise.all([
+    supabase.from('course_faculty').select('faculty_id, profiles ( * )').eq('course_id', course.id),
+    supabase.from('enrollments').select('student_id, profiles ( * )').eq('course_id', course.id),
+  ]);
+  if (f.error) throw dbError('Course faculty error', f.error);
+  if (e.error) throw dbError('Enrollments error', e.error);
+
+  const people = (rows) =>
+    rows
+      .filter((r) => r.profiles)
+      .map((r) => toUserResponse(r.profiles))
+      .sort((a, b) => a.name.localeCompare(b.name));
+
+  res.json({
+    success: true,
+    course: { id: course.id, code: course.code, title: course.name, semester: course.semester },
+    faculty: people(f.data),
+    students: people(e.data),
+  });
+}));
+
+router.post('/:id/faculty', requireRole('admin'), asyncHandler(async (req, res) => {
+  const course = await loadCourseOr404(req.params.id);
+  const userId = requiredString(req.body?.userId, 'userId', { max: 40 });
+  const person = await assignFaculty(req, course, userId);
+  res.status(201).json({ success: true, user: toUserResponse(person) });
+}));
+
+router.delete('/:id/faculty/:userId', requireRole('admin'), asyncHandler(async (req, res) => {
+  const course = await loadCourseOr404(req.params.id);
+  if (!isUuid(req.params.userId)) throw new HttpError(400, 'Invalid user id');
+  const { data, error } = await supabase
+    .from('course_faculty')
+    .delete()
+    .eq('course_id', course.id)
+    .eq('faculty_id', req.params.userId)
+    .select('faculty_id');
+  if (error) throw dbError('Remove faculty error', error);
+  if (!data.length) throw new HttpError(404, 'This person does not teach this course');
+  recordAuditLog(req, { action: 'REMOVE_FACULTY', resource: `${req.params.userId} from ${course.code}`, courseId: course.id });
+  res.json({ success: true });
+}));
+
+// Enroll one or more students: { userIds: [...] } (or { userId }).
+router.post('/:id/enrollments', requireRole('admin'), asyncHandler(async (req, res) => {
+  const course = await loadCourseOr404(req.params.id);
+  const raw = Array.isArray(req.body?.userIds) ? req.body.userIds : [req.body?.userId];
+  const userIds = [...new Set(raw.filter(Boolean))];
+  if (!userIds.length) throw new HttpError(400, 'userIds is required');
+  if (userIds.length > 200) throw new HttpError(400, 'At most 200 students at a time');
+
+  const students = [];
+  for (const id of userIds) students.push(await loadPersonWithRole(id, 'student'));
+
+  const { error } = await supabase
+    .from('enrollments')
+    .upsert(students.map((s) => ({ course_id: course.id, student_id: s.id })), { ignoreDuplicates: true });
+  if (error) throw dbError('Enroll error', error);
+
+  recordAuditLog(req, {
+    action: 'ENROLL_STUDENTS',
+    resource: `${students.length} student(s) -> ${course.code}`,
+    courseId: course.id,
+    details: students.map((s) => s.full_name).join(', '),
+  });
+  res.status(201).json({ success: true, enrolled: students.map(toUserResponse) });
+}));
+
+router.delete('/:id/enrollments/:userId', requireRole('admin'), asyncHandler(async (req, res) => {
+  const course = await loadCourseOr404(req.params.id);
+  if (!isUuid(req.params.userId)) throw new HttpError(400, 'Invalid user id');
+  const { data, error } = await supabase
+    .from('enrollments')
+    .delete()
+    .eq('course_id', course.id)
+    .eq('student_id', req.params.userId)
+    .select('student_id');
+  if (error) throw dbError('Unenroll error', error);
+  if (!data.length) throw new HttpError(404, 'This student is not enrolled in this course');
+  recordAuditLog(req, { action: 'UNENROLL_STUDENT', resource: `${req.params.userId} from ${course.code}`, courseId: course.id });
+  res.json({ success: true });
 }));
 
 export default router;

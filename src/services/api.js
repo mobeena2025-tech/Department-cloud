@@ -122,6 +122,14 @@ export const api = {
   },
   getCourse: (id) => fetchApi(`/courses/${id}`),
   createCourse: (data) => fetchApi('/courses', { method: 'POST', body: JSON.stringify(data) }),
+  // Admin: who teaches / who is enrolled
+  getCoursePeople: (courseId) => fetchApi(`/courses/${courseId}/people`),
+  assignFaculty: (courseId, userId) =>
+    fetchApi(`/courses/${courseId}/faculty`, { method: 'POST', body: JSON.stringify({ userId }) }),
+  removeFaculty: (courseId, userId) => fetchApi(`/courses/${courseId}/faculty/${userId}`, { method: 'DELETE' }),
+  enrollStudents: (courseId, userIds) =>
+    fetchApi(`/courses/${courseId}/enrollments`, { method: 'POST', body: JSON.stringify({ userIds }) }),
+  unenrollStudent: (courseId, userId) => fetchApi(`/courses/${courseId}/enrollments/${userId}`, { method: 'DELETE' }),
 
   // Materials
   getMaterials: (params = {}) => {
