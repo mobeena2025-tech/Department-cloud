@@ -1,0 +1,23 @@
+# Render "Blueprint": one free web service that runs the API and serves the
+# built React app from the same address.
+# Secrets are NOT stored here: Render asks for them when you create the service.
+services:
+  - type: web
+    name: department-cloud
+    runtime: node
+    plan: free
+    region: singapore
+    # Dev dependencies (Vite) are needed to build the web pages.
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "22"
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false

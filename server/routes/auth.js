@@ -3,6 +3,7 @@ import { createAuthClient } from '../supabase.js';
 import { requireAuth, loadProfile, toUserResponse } from '../lib/auth.js';
 import { HttpError, asyncHandler, requiredString } from '../lib/validate.js';
 import { recordAuditLog } from '../lib/audit.js';
+import { loginByEmail, loginByIp } from '../lib/rateLimit.js';
 
 const router = express.Router();
 
@@ -19,8 +20,23 @@ router.post('/login', asyncHandler(async (req, res) => {
   const email = requiredString(req.body?.email, 'email', { max: 200 }).toLowerCase();
   const password = requiredString(req.body?.password, 'password', { max: 200 });
 
+  // Stop password guessing before asking Supabase.
+  const ipKey = `ip:${req.ip}`;
+  const emailKey = `email:${email}`;
+  loginByIp.check(ipKey);
+  loginByEmail.check(emailKey);
+
   const { data, error } = await createAuthClient().auth.signInWithPassword({ email, password });
+
+  // Supabase's own limit (too many sign-ins from this server in a short
+  // time) is not the user's fault: say so instead of "wrong password".
+  if (error && error.status === 429) {
+    throw new HttpError(503, 'Sign-in is busy right now. Please try again in a minute.');
+  }
+
   if (error || !data?.session) {
+    loginByIp.hit(ipKey);
+    loginByEmail.hit(emailKey);
     recordAuditLog(req, {
       action: 'LOGIN',
       actor: { email },
@@ -31,6 +47,7 @@ router.post('/login', asyncHandler(async (req, res) => {
     // Same message for unknown email and wrong password.
     throw new HttpError(401, 'Invalid email or password');
   }
+  loginByEmail.reset(emailKey);
 
   const profile = await loadProfile(data.user.id);
   if (!profile) throw new HttpError(403, 'This account has no role assigned. Contact the department admin.');

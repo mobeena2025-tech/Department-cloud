@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import supabase from '../../server/supabase.js';
 import app from '../../server/app.js';
 import { clearAuthCache } from '../../server/lib/auth.js';
+import { loginByEmail, loginByIp } from '../../server/lib/rateLimit.js';
 
 // In-memory stand-in for the parts of the Supabase client the API uses.
 // Rows are stored per table; joined data (e.g. materials.courses) is stored
@@ -108,6 +109,8 @@ export const tokens = {
 
 export function resetDb() {
   clearAuthCache();
+  loginByEmail.clear();
+  loginByIp.clear();
   db.signedUrls.length = 0;
   db.uploads.length = 0;
   db.removed.length = 0;

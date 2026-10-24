@@ -1,6 +1,9 @@
 import app from './app.js';
 
-const PORT = process.env.API_PORT || 5000;
+// Hosts like Render tell the app which port to use through PORT. Locally PORT
+// may belong to the Vite dev server, so it is only used in production.
+const PORT =
+  process.env.API_PORT || (process.env.NODE_ENV === 'production' ? process.env.PORT : undefined) || 5000;
 
 app.listen(PORT, () => {
   console.log('====================================================');

@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import express from 'express';
 import cors from 'cors';
 
@@ -14,6 +17,7 @@ import userRoutes from './routes/users.js';
 import { requireAuth } from './lib/auth.js';
 
 const app = express();
+const isProduction = process.env.NODE_ENV === 'production';
 
 // Only the frontend may call the API from a browser.
 // CORS_ORIGIN can list several origins, comma separated.
@@ -24,6 +28,22 @@ const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:3000')
 
 // Middleware
 app.disable('x-powered-by');
+// On a host like Render the app sits behind one proxy; trust it so req.ip is
+// the visitor's address (used for sign-in limits and the audit log).
+if (isProduction || process.env.TRUST_PROXY === '1') app.set('trust proxy', 1);
+
+// Basic security headers.
+app.use((req, res, next) => {
+  res.set({
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'same-origin',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  });
+  if (isProduction) res.set('Strict-Transport-Security', 'max-age=15552000');
+  next();
+});
+
 app.use(cors({ origin: allowedOrigins }));
 app.use(express.json({ limit: '100kb' }));
 
@@ -66,6 +86,22 @@ app.use('/api', (req, res) => {
   res.status(404).json({ success: false, message: 'Not found' });
 });
 
+// ---- Built web pages (production) ----
+// After `npm run build`, the same server serves the React app from dist/, so
+// the whole site is one address. In development Vite serves the pages instead.
+const distDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../dist');
+const indexHtml = path.join(distDir, 'index.html');
+if (isProduction && fs.existsSync(indexHtml)) {
+  // File names under assets/ change on every build, so they can be cached long.
+  app.use('/assets', express.static(path.join(distDir, 'assets'), { immutable: true, maxAge: '30d' }));
+  app.use(express.static(distDir, { index: false, maxAge: 0 }));
+  // Any other page address (e.g. /courses/AAN) loads the React app.
+  app.get(/^\/(?!api(\/|$)).*/, (req, res) => {
+    res.set('Cache-Control', 'no-cache');
+    res.sendFile(indexHtml);
+  });
+}
+
 // Global error handler: log the details, send only a safe message.
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, next) => {
@@ -74,6 +110,7 @@ app.use((err, req, res, next) => {
     console.error(`[API] ${req.method} ${req.originalUrl} failed:`, err.message);
   }
   let message = 'Internal server error';
+  if (status === 503 && err.expose) message = err.message;
   if (status < 500) {
     message = err.type === 'entity.parse.failed' ? 'Invalid JSON body' : err.expose ? err.message : 'Bad request';
   }

@@ -175,11 +175,44 @@ npm run import-people -- private/people.csv
 
 ---
 
+## Putting it online (Render, free)
+
+In production one Node service runs the API **and** serves the built React app, so the
+whole site is one address. [`render.yaml`](render.yaml) describes it.
+
+1. Sign in at <https://render.com> with GitHub.
+2. **New → Blueprint**, pick this repository, click **Apply**.
+3. When asked, enter `SUPABASE_URL` and `SUPABASE_SECRET_KEY` (same values as your `.env`).
+4. Wait for the first build (a few minutes). The site is at `https://<service-name>.onrender.com`.
+5. In Supabase → **Authentication → Rate Limits**, raise *sign-ups and sign-ins* and
+   *token refreshes*: all sign-ins come from the server's address, so the defaults are too
+   low for a whole class.
+
+Every push to `main` redeploys automatically. On the free plan the service sleeps after
+~15 minutes without visitors; the next visit takes up to a minute to wake it.
+
+Locally you can try the production build with:
+
+```bash
+npm run build
+```
+```bash
+npm start
+```
+(with `NODE_ENV=production` set; the site is then on port 5000).
+
+Sign-in is protected against guessing: 5 wrong passwords lock that account for
+15 minutes, and 30 failures from one network address block that address for 15 minutes.
+Correct sign-ins never count.
+
+---
+
 ## Scripts
 
 | Command | What it does |
 |---|---|
 | `npm run dev` | API (port 5000) + Vite dev server (port 3000) |
+| `npm start` | production server (API + built pages); used by Render |
 | `npm run build` | production build of the frontend into `dist/` |
 | `npm test` | server tests (Node's built-in test runner) |
 | `npm run lint` | ESLint (0 errors; remaining warnings are unused imports in older pages) |
