@@ -119,7 +119,7 @@ Use the password from `seed-credentials.txt`.
    CS202** (or go to `/courses/CS202`). The new file is listed under its unit. Click it,
    then **Open / Download**: the PDF opens in a new tab through a short-lived link.
    Sign out.
-3. **Unenrolled student is denied.** Sign in as `student.c@dac.test`. CS202 is not in his
+3. **Unenrolled student is denied.** Sign in as `student.c@dac.test`. CS202 is not in their
    course list, and going to `/courses/CS202` shows *"Course unavailable — You are not
    enrolled in or assigned to this course."* The API refuses the file itself with 403
    before any link is created. Sign out.
@@ -129,7 +129,7 @@ Use the password from `seed-credentials.txt`.
 
 Optional extras: as Student A, submit a PDF for *Normalization worksheet* under
 **Assignments**; as Faculty A, grade it under **Submissions** (the grading screen opens
-his PDF; it is at `/faculty/submissions`, linked from **Assignments**); post a course notice under **Announcements**; ask the **Assistant**
+their PDF; it is at `/faculty/submissions`, linked from **Assignments**); post a course notice under **Announcements**; ask the **Assistant**
 "Find DBMS unit 3 material".
 
 ### Managing who teaches and who is enrolled

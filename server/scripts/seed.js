@@ -23,7 +23,7 @@ const TEACHING = {
   'faculty.b@dac.test': ['CS301', 'AI302'],
 };
 
-// Who is enrolled where. Student C is deliberately NOT in CS202, so he is the
+// Who is enrolled where. Student C is deliberately NOT in CS202, so they are the
 // "unenrolled student" in the demo script.
 const ENROLLED = {
   'student.a@dac.test': ['CS202', 'AI204', 'CS301'],
