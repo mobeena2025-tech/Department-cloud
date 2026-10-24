@@ -76,7 +76,7 @@ async function main() {
   const rel = path.relative(process.cwd(), full).replace(/\\/g, '/');
   if (!rel.startsWith('private/')) die('keep the CSV inside the private/ folder so it can never be committed');
 
-  const [header, ...lines] = parseCsv(fs.readFileSync(full, 'utf8').replace(/^﻿/, ''));
+  const [header, ...lines] = parseCsv(fs.readFileSync(full, 'utf8').replace(/^\uFEFF/, ''));
   if (!header) die('the file is empty');
   const col = Object.fromEntries(header.map((h, i) => [h.trim().toLowerCase(), i]));
   for (const needed of ['name', 'email', 'role']) {
