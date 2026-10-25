@@ -82,7 +82,10 @@ export async function ragAnswer(user, question) {
   const candidates = [];
   top.forEach((m, sourceIndex) => {
     splitSentences(m.content).forEach((text, position) => {
-      if (text.length >= 20) candidates.push({ text, sourceIndex, position });
+      // Skip headings and title-like fragments: short and without an ending
+      // punctuation mark ("Unit 4: Transactions", "Lecture notes - week 2").
+      const looksLikeTitle = text.length < 60 && !/[.!?:;]$/.test(text);
+      if (text.length >= 20 && !looksLikeTitle) candidates.push({ text, sourceIndex, position });
     });
   });
   const sVecs = await embedPassages(candidates.map((c) => c.text));

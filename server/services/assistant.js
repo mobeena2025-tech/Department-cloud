@@ -15,7 +15,7 @@ const STOPWORDS = new Set([
   'assignment', 'assignments', 'deadline', 'deadlines', 'due', 'homework', 'submission',
   'upcoming', 'recent', 'pending', 'next', 'latest',
 ]);
-const ASSIGNMENT_WORDS = /\b(assignment|assignments|deadline|deadlines|due|homework|submission)\b/;
+export const ASSIGNMENT_WORDS = /\b(assignment|assignments|deadline|deadlines|due|homework|submission)\b/;
 
 // Common short forms students type, mapped to words in course names.
 const ALIASES = {
@@ -141,7 +141,7 @@ export async function searchAcademicContent(user, query) {
     lines.push('Nothing matched. Try a course code (e.g. CS202), a unit ("unit 3"), or words from a material title or topic.');
   }
   lines.push('');
-  lines.push('This assistant matches words in titles, topics and descriptions. It does not read inside PDFs or write answers.');
+  lines.push('(Searched titles and topics only: none of the PDFs in your courses can be searched yet.)');
 
   const codes = [...new Set([...m.data, ...a.data].map((r) => r.courses?.code).filter(Boolean))].slice(0, 2);
   const relatedQuestions = [

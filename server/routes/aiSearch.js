@@ -1,5 +1,5 @@
 import express from 'express';
-import { searchAcademicContent } from '../services/assistant.js';
+import { searchAcademicContent, ASSIGNMENT_WORDS } from '../services/assistant.js';
 import { ragAnswer } from '../rag/search.js';
 import { recordAuditLog } from '../lib/audit.js';
 import { asyncHandler, requiredString } from '../lib/validate.js';
@@ -13,17 +13,34 @@ const router = express.Router();
 //     questions, and as the fallback when no PDF text is indexed yet.
 router.post('/', asyncHandler(async (req, res) => {
   const query = requiredString(req.body?.query, 'query', { max: 300 });
-  const keyword = await searchAcademicContent(req.user, query);
 
-  let rag = null;
-  try {
-    rag = await ragAnswer(req.user, query);
-  } catch (err) {
-    console.error('[RAG] falling back to keyword search:', err.message);
-  }
+  // Run both searches at the same time.
+  const [keyword, rag] = await Promise.all([
+    searchAcademicContent(req.user, query),
+    ragAnswer(req.user, query).catch((err) => {
+      console.error('[RAG] falling back to keyword search:', err.message);
+      return null;
+    }),
+  ]);
+
+  // "Show my upcoming assignments" is answered with the assignment list,
+  // not with sentences from the notes.
+  const assignmentQuestion = ASSIGNMENT_WORDS.test(query.toLowerCase()) && keyword.assignments.length > 0;
 
   let result;
-  if (!rag) {
+  if (assignmentQuestion) {
+    result = {
+      query,
+      method: rag ? 'rag-extractive' : 'keyword-search',
+      found: true,
+      answer: `You have ${keyword.assignments.length} assignment${keyword.assignments.length === 1 ? '' : 's'} in your courses, listed below.`,
+      answerSentences: [],
+      sources: [],
+      assignments: keyword.assignments,
+      relatedQuestions: keyword.relatedQuestions,
+      timestamp: new Date().toISOString(),
+    };
+  } else if (!rag) {
     result = { ...keyword, method: 'keyword-search', found: keyword.sources.length > 0, answerSentences: [] };
   } else {
     const answer = rag.found
