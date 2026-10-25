@@ -74,6 +74,16 @@ export function AuthProvider({ children }) {
     setAuthNotice('');
   };
 
+  // Update the signed-in user's details (e.g. after changing the password).
+  const updateCurrentUser = (patch) => {
+    setCurrentUser((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...patch };
+      localStorage.setItem(USER_KEY, JSON.stringify(next));
+      return next;
+    });
+  };
+
   const isStudent = currentUser?.role === 'student';
   const isFaculty = currentUser?.role === 'faculty';
   const isAdmin = currentUser?.role === 'admin';
@@ -91,6 +101,7 @@ export function AuthProvider({ children }) {
         authNotice,
         login,
         logout,
+        updateCurrentUser,
         isStudent,
         isFaculty,
         isAdmin,

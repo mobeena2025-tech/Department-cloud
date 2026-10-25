@@ -3,8 +3,11 @@ import supabase from '../supabase.js';
 import { HttpError } from './validate.js';
 
 // The user object the API attaches to req.user and returns to the frontend.
-export function toUserResponse(profile) {
+// `authUser` (the Supabase Auth user) tells us whether the account still has
+// a temporary password that should be changed.
+export function toUserResponse(profile, authUser = null) {
   return {
+    mustChangePassword: Boolean(authUser?.app_metadata?.must_change_password),
     id: profile.id,
     name: profile.full_name,
     email: profile.email,
@@ -53,6 +56,7 @@ export async function requireAuth(req, res, next) {
     if (!match) throw new HttpError(401, 'Authentication required');
     const token = match[1];
 
+
     const key = cacheKey(token);
     const hit = cache.get(key);
     if (hit && hit.until > Date.now()) {
@@ -66,7 +70,7 @@ export async function requireAuth(req, res, next) {
     const profile = await loadProfile(data.user.id);
     if (!profile) throw new HttpError(403, 'This account has no role assigned');
 
-    req.user = toUserResponse(profile);
+    req.user = toUserResponse(profile, data.user);
     cache.set(key, { user: req.user, until: Date.now() + CACHE_MS });
     if (cache.size > 500) cache.delete(cache.keys().next().value);
     next();

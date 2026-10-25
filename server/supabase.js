@@ -21,8 +21,14 @@ const supabase = createClient(url, secretKey, clientOptions);
 
 // A throwaway client for sign-in / refresh calls, so a user's session is
 // never stored on the shared admin client above.
+let authClientFactory = () => createClient(url, secretKey, clientOptions);
 export function createAuthClient() {
-  return createClient(url, secretKey, clientOptions);
+  return authClientFactory();
+}
+
+/** Tests only: replace the sign-in client with a fake. */
+export function setAuthClientFactoryForTests(factory) {
+  authClientFactory = factory;
 }
 
 export default supabase;

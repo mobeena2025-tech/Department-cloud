@@ -109,6 +109,9 @@ export default function Login({ onLoginSuccess }) {
             >
               {loading ? 'Signing in...' : 'Sign In to Academic Cloud'}
             </button>
+            <p className="text-center text-[11px] text-cloud-500">
+              Forgot your password? Ask your department admin to reset it.
+            </p>
           </form>
 
           {/* Security Guarantee */}

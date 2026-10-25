@@ -238,6 +238,18 @@ Sign-in is protected against guessing: 5 wrong passwords lock that account for
 15 minutes, and 30 failures from one network address block that address for 15 minutes.
 Correct sign-ins never count.
 
+### Passwords
+
+- **Change password:** anyone signed in opens the menu at the top right and chooses
+  **Change Password** (current password, then a new one: 8+ characters with a letter
+  and a number). Their other devices are signed out.
+- **Temporary passwords:** accounts made by the admin or the importer, and accounts
+  that were reset, show a yellow reminder until the person picks their own password.
+- **Forgot password:** there is no email reset. The admin opens **Users & Roles** and
+  clicks **Reset password** next to the person. The new temporary password is shown
+  once; send it to them privately. Resets are recorded in the audit log (without the
+  password).
+
 ---
 
 ## Scripts

@@ -1,6 +1,6 @@
 import './setup.js';
 import crypto from 'node:crypto';
-import supabase from '../../server/supabase.js';
+import supabase, { setAuthClientFactoryForTests } from '../../server/supabase.js';
 import app from '../../server/app.js';
 import { clearAuthCache } from '../../server/lib/auth.js';
 import { loginByEmail, loginByIp } from '../../server/lib/rateLimit.js';
@@ -14,6 +14,7 @@ export const db = {
   signedUrls: [], // storage paths a signed URL was created for
   uploads: [], // storage paths uploaded
   removed: [], // storage paths removed
+  authUsers: {}, // user id -> { email, password, app_metadata }
 };
 
 const getPath = (row, path) => path.split('.').reduce((v, k) => (v == null ? v : v[k]), row);
@@ -79,10 +80,43 @@ supabase.rpc = async (fn, args) => {
     .slice(0, args.match_count);
   return { data: rows, error: null };
 };
-supabase.auth.getUser = async (token) =>
-  db.tokens[token]
-    ? { data: { user: { id: db.tokens[token] } }, error: null }
-    : { data: { user: null }, error: { message: 'invalid JWT' } };
+supabase.auth.getUser = async (token) => {
+  const id = db.tokens[token];
+  if (!id) return { data: { user: null }, error: { message: 'invalid JWT' } };
+  const u = db.authUsers[id];
+  return { data: { user: { id, email: u?.email, app_metadata: { ...(u?.app_metadata || {}) } } }, error: null };
+};
+supabase.auth.admin.updateUserById = async (id, attrs) => {
+  const u = db.authUsers[id];
+  if (!u) return { data: { user: null }, error: { message: 'User not found' } };
+  // Like Supabase: a new password ends every session of the account.
+  if (attrs.password) {
+    u.password = attrs.password;
+    for (const [t, uid] of Object.entries(db.tokens)) if (uid === id) delete db.tokens[t];
+  }
+  if (attrs.app_metadata) u.app_metadata = { ...u.app_metadata, ...attrs.app_metadata };
+  return { data: { user: { id, email: u.email, app_metadata: u.app_metadata } }, error: null };
+};
+// Sign-in checks the passwords stored in db.authUsers.
+setAuthClientFactoryForTests(() => ({
+  auth: {
+    signInWithPassword: async ({ email, password }) => {
+      const entry = Object.entries(db.authUsers).find(([, u]) => u.email === email && u.password === password);
+      if (!entry) return { data: { user: null, session: null }, error: { status: 400, message: 'Invalid login credentials' } };
+      const [id, u] = entry;
+      const token = `tok-${crypto.randomUUID()}`;
+      db.tokens[token] = id;
+      return {
+        data: {
+          user: { id, email: u.email, app_metadata: { ...u.app_metadata } },
+          session: { access_token: token, refresh_token: `ref-${token}`, expires_at: Math.floor(Date.now() / 1000) + 3600 },
+        },
+        error: null,
+      };
+    },
+    refreshSession: async () => ({ data: { session: null, user: null }, error: { status: 400, message: 'Invalid refresh token' } }),
+  },
+}));
 
 const fakeBucket = {
   createSignedUrl: async (path) => {
@@ -170,6 +204,10 @@ export function resetDb() {
     audit_logs: [],
     material_chunks: [],
   };
+  // Every fixture account signs in with this password.
+  db.authUsers = Object.fromEntries(
+    db.tables.profiles.map((p) => [p.id, { email: p.email, password: 'Password123', app_metadata: {} }])
+  );
 }
 
 // A real (tiny) PDF with one text line per page, for PDF-reading tests.

@@ -16,10 +16,10 @@
 // The import only ADDS course links; removing someone from a course is done in
 // the app (admin -> Courses -> Manage People).
 
-import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import supabase from '../supabase.js';
+import { generateTemporaryPassword } from '../lib/password.js';
 
 const args = process.argv.slice(2);
 const file = args.find((a) => !a.startsWith('--'));
@@ -60,12 +60,7 @@ export function parseCsv(text) {
   return rows;
 }
 
-// Easy-to-read password: no 0/O/1/l/I.
-function makePassword() {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-  const bytes = crypto.randomBytes(12);
-  return Array.from(bytes, (b) => chars[b % chars.length]).join('');
-}
+const makePassword = () => generateTemporaryPassword();
 
 const csvCell = (v) => (/[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
 
@@ -150,12 +145,17 @@ async function main() {
     let password = null;
     if (!user) {
       password = makePassword();
-      const { data, error } = await supabase.auth.admin.createUser({ email: p.email, password, email_confirm: true });
+      const { data, error } = await supabase.auth.admin.createUser({
+        email: p.email,
+        password,
+        email_confirm: true,
+        app_metadata: { must_change_password: true }, // asked to choose their own after sign-in
+      });
       if (error) die(`could not create ${p.email} (${error.message}); rows before this one were imported`);
       user = data.user;
     } else if (resetPasswords) {
       password = makePassword();
-      const { error } = await supabase.auth.admin.updateUserById(user.id, { password });
+      const { error } = await supabase.auth.admin.updateUserById(user.id, { password, app_metadata: { must_change_password: true } });
       if (error) die(`could not reset password for ${p.email} (${error.message})`);
     }
 

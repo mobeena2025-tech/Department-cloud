@@ -1,14 +1,44 @@
 import React, { useState, useEffect } from 'react';
-import { Users, UserPlus, Search, Filter, Shield, GraduationCap, Briefcase } from 'lucide-react';
+import { UserPlus, Search, Filter, KeyRound, Copy, X } from 'lucide-react';
 import { api } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
+import { useNotification } from '../../context/NotificationContext';
 import AddUserModal from '../../components/admin/AddUserModal';
 
 export default function AdminUsers({ defaultRoleFilter = 'ALL' }) {
+  const { currentUser } = useAuth();
+  const { addToast } = useNotification();
   const [users, setUsers] = useState([]);
   const [query, setQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState(defaultRoleFilter);
   const [showAddModal, setShowAddModal] = useState(false);
   const [loading, setLoading] = useState(true);
+  // Password reset: the user to confirm, then the result shown once.
+  const [resetTarget, setResetTarget] = useState(null);
+  const [resetting, setResetting] = useState(false);
+  const [resetResult, setResetResult] = useState(null);
+
+  const confirmReset = async () => {
+    setResetting(true);
+    try {
+      const res = await api.resetUserPassword(resetTarget.id);
+      setResetResult({ name: res.user.name, email: res.user.email, password: res.temporaryPassword });
+      setResetTarget(null);
+    } catch (err) {
+      addToast(err.message || 'Could not reset the password', 'error', 'Reset Failed');
+    } finally {
+      setResetting(false);
+    }
+  };
+
+  const copyPassword = async () => {
+    try {
+      await navigator.clipboard.writeText(resetResult.password);
+      addToast('Temporary password copied.', 'success', 'Copied');
+    } catch {
+      addToast('Copy failed. Select the password and copy it by hand.', 'error', 'Copy Failed');
+    }
+  };
 
   const loadUsers = async () => {
     try {
@@ -101,7 +131,8 @@ export default function AdminUsers({ defaultRoleFilter = 'ALL' }) {
                 <th className="py-3.5 px-6">Role</th>
                 <th className="py-3.5 px-6">Department</th>
                 <th className="py-3.5 px-6">Identifier</th>
-                <th className="py-3.5 px-6 text-right">Status</th>
+                <th className="py-3.5 px-6">Status</th>
+                <th className="py-3.5 px-6 text-right">Password</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-cloud-100 text-cloud-800">
@@ -138,10 +169,23 @@ export default function AdminUsers({ defaultRoleFilter = 'ALL' }) {
                   </td>
 
                   {/* Status */}
-                  <td className="py-3.5 px-6 text-right">
+                  <td className="py-3.5 px-6">
                     <span className="badge-pill bg-emerald-50 text-emerald-700 border border-emerald-200">
                       {user.status || 'Active'}
                     </span>
+                  </td>
+
+                  {/* Password reset (not for your own account) */}
+                  <td className="py-3.5 px-6 text-right">
+                    {user.id !== currentUser?.id && (
+                      <button
+                        onClick={() => setResetTarget(user)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg border border-cloud-200 text-cloud-700 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-800 font-medium cursor-pointer whitespace-nowrap"
+                      >
+                        <KeyRound className="w-3 h-3" />
+                        Reset password
+                      </button>
+                    )}
                   </td>
 
                 </tr>
@@ -159,6 +203,76 @@ export default function AdminUsers({ defaultRoleFilter = 'ALL' }) {
           setUsers((prev) => [newUser, ...prev]);
         }}
       />
+
+      {/* Step 1: confirm the reset */}
+      {resetTarget && (
+        <div className="fixed inset-0 z-50 bg-cloud-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-cloud-200 w-full max-w-sm p-6 space-y-4 text-xs">
+            <h3 className="text-sm font-bold text-cloud-900">Reset password?</h3>
+            <p className="text-cloud-700">
+              <span className="font-semibold">{resetTarget.name}</span> ({resetTarget.email}) will get a new
+              temporary password. Their old password stops working, and they are asked to choose their own after
+              signing in.
+            </p>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                onClick={() => setResetTarget(null)}
+                disabled={resetting}
+                className="px-4 py-2 rounded-xl border border-cloud-200 text-cloud-700 hover:bg-cloud-100 font-medium cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmReset}
+                disabled={resetting}
+                className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-semibold disabled:opacity-50 cursor-pointer"
+              >
+                {resetting ? 'Resetting...' : 'Reset password'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Step 2: show the temporary password once */}
+      {resetResult && (
+        <div className="fixed inset-0 z-50 bg-cloud-950/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-cloud-200 w-full max-w-sm p-6 space-y-4 text-xs">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-cloud-900">New temporary password</h3>
+              <button onClick={() => setResetResult(null)} className="text-cloud-400 hover:text-cloud-600 p-1 rounded-lg cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="text-cloud-700">
+              For <span className="font-semibold">{resetResult.name}</span> ({resetResult.email})
+            </p>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 px-3 py-2 rounded-xl bg-cloud-50 border border-cloud-200 font-mono text-sm text-cloud-900 select-all break-all">
+                {resetResult.password}
+              </code>
+              <button
+                onClick={copyPassword}
+                className="p-2 rounded-xl border border-cloud-200 text-cloud-700 hover:bg-cloud-100 cursor-pointer"
+                title="Copy"
+              >
+                <Copy className="w-4 h-4" />
+              </button>
+            </div>
+            <p className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900">
+              This is shown only once. Send it to them privately (not in a group chat).
+            </p>
+            <div className="flex justify-end">
+              <button
+                onClick={() => setResetResult(null)}
+                className="px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold cursor-pointer"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

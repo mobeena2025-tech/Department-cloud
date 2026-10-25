@@ -3,6 +3,8 @@ import supabase from '../supabase.js';
 import { requireRole, toUserResponse } from '../lib/auth.js';
 import { recordAuditLog } from '../lib/audit.js';
 import { visibleCourseIds } from '../lib/access.js';
+import { isUuid } from '../lib/courseLookup.js';
+import { generateTemporaryPassword } from '../lib/password.js';
 import { HttpError, asyncHandler, optionalInt, optionalString, requiredString } from '../lib/validate.js';
 
 const router = express.Router();
@@ -75,6 +77,8 @@ router.post('/', requireRole('admin'), asyncHandler(async (req, res) => {
     email,
     password,
     email_confirm: true,
+    // The admin chose this password, so ask the user to pick their own.
+    app_metadata: { must_change_password: true },
   });
   if (authError) {
     if (/already/i.test(authError.message)) throw new HttpError(409, 'An account with this email already exists');
@@ -98,7 +102,39 @@ router.post('/', requireRole('admin'), asyncHandler(async (req, res) => {
     details: `Admin created a ${role} account.`,
   });
 
-  res.status(201).json({ success: true, user: toUserResponse(data) });
+  res.status(201).json({ success: true, user: toUserResponse(data, created.user) });
+}));
+
+// "Forgot password": the admin gives the user a new temporary password.
+// It is returned ONCE in this response (never stored or logged) for the
+// admin to pass on privately; the user is asked to change it after sign-in.
+router.post('/:id/reset-password', requireRole('admin'), asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  if (!isUuid(id)) throw new HttpError(400, 'Invalid user id');
+  if (id === req.user.id) throw new HttpError(400, 'Use "Change password" to change your own password');
+
+  const { data: profile, error } = await supabase.from('profiles').select('id, full_name, email, role').eq('id', id).maybeSingle();
+  if (error) throw dbError('Profile lookup error', error);
+  if (!profile) throw new HttpError(404, 'User not found');
+
+  const temporaryPassword = generateTemporaryPassword();
+  const { error: updError } = await supabase.auth.admin.updateUserById(id, {
+    password: temporaryPassword,
+    app_metadata: { must_change_password: true },
+  });
+  if (updError) {
+    console.error('Password reset failed:', updError.message);
+    throw new HttpError(500, 'Could not reset the password');
+  }
+
+  recordAuditLog(req, {
+    action: 'RESET_PASSWORD',
+    resource: `${profile.full_name} (${profile.email})`,
+    severity: 'WARNING',
+    details: 'Admin issued a temporary password.',
+  });
+
+  res.json({ success: true, user: { id: profile.id, name: profile.full_name, email: profile.email }, temporaryPassword });
 }));
 
 export default router;

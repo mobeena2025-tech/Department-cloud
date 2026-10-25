@@ -114,6 +114,8 @@ export const api = {
   login: (email, password) =>
     fetchApi('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   getProfile: () => fetchApi('/auth/me'),
+  changePassword: (currentPassword, newPassword) =>
+    fetchApi('/auth/change-password', { method: 'POST', body: JSON.stringify({ currentPassword, newPassword }) }),
 
   // Courses
   getCourses: (params = {}) => {
@@ -187,4 +189,5 @@ export const api = {
     return fetchApi(`/users${qs ? `?${qs}` : ''}`);
   },
   createUser: (data) => fetchApi('/users', { method: 'POST', body: JSON.stringify(data) }),
+  resetUserPassword: (userId) => fetchApi(`/users/${userId}/reset-password`, { method: 'POST' }),
 };

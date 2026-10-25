@@ -13,9 +13,11 @@ import {
   Lock,
   GraduationCap,
   Briefcase,
-  Layers
+  Layers,
+  KeyRound
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import ChangePasswordModal from '../common/ChangePasswordModal';
 import { useNotification } from '../../context/NotificationContext';
 
 export default function TopNav({ onNavigate, currentPath }) {
@@ -23,6 +25,7 @@ export default function TopNav({ onNavigate, currentPath }) {
   const { addToast } = useNotification();
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
 
   // Latest announcements for this user (department-wide + their courses).
   const [notifications, setNotifications] = useState([]);
@@ -185,12 +188,24 @@ export default function TopNav({ onNavigate, currentPath }) {
                   <button
                     onClick={() => {
                       setShowUserMenu(false);
-                      onNavigate(currentUser?.role === 'student' ? '/student/profile' : '/admin/settings');
+                      onNavigate(
+                        { student: '/student/profile', faculty: '/faculty/profile' }[currentUser?.role] || '/admin/settings'
+                      );
                     }}
                     className="w-full text-left p-2 rounded-lg hover:bg-cloud-50 text-cloud-700 flex items-center gap-2 cursor-pointer"
                   >
                     <User className="w-3.5 h-3.5" />
                     <span>Academic Profile</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowUserMenu(false);
+                      setShowChangePassword(true);
+                    }}
+                    className="w-full text-left p-2 rounded-lg hover:bg-cloud-50 text-cloud-700 flex items-center gap-2 cursor-pointer"
+                  >
+                    <KeyRound className="w-3.5 h-3.5" />
+                    <span>Change Password</span>
                   </button>
                   <button
                     onClick={() => {
@@ -210,6 +225,21 @@ export default function TopNav({ onNavigate, currentPath }) {
 
         </div>
       </div>
+
+      {/* Reminder for accounts still on a temporary password */}
+      {currentUser?.mustChangePassword && (
+        <div className="px-4 sm:px-6 py-2 bg-amber-50 border-t border-amber-200 text-amber-900 text-xs flex flex-wrap items-center justify-between gap-2">
+          <span>You are signed in with a temporary password. Please choose your own.</span>
+          <button
+            onClick={() => setShowChangePassword(true)}
+            className="px-3 py-1 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-semibold cursor-pointer"
+          >
+            Change password
+          </button>
+        </div>
+      )}
+
+      <ChangePasswordModal isOpen={showChangePassword} onClose={() => setShowChangePassword(false)} />
     </header>
   );
 }
