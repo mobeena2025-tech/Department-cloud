@@ -17,6 +17,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import StatCard from '../../components/common/StatCard';
+import { markElectives, courseMixLabel } from '../../services/courseKinds';
 import DocumentPreviewModal from '../../components/common/DocumentPreviewModal';
 
 export default function StudentDashboard({ onNavigate }) {
@@ -25,19 +26,22 @@ export default function StudentDashboard({ onNavigate }) {
   const [materials, setMaterials] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [announcements, setAnnouncements] = useState([]);
+  const [submissions, setSubmissions] = useState([]);
   const [selectedMaterial, setSelectedMaterial] = useState(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [cRes, mRes, aRes, ancRes] = await Promise.all([
-          api.getCourses({ role: 'student', userId: currentUser?.id }),
+        const [cRes, mRes, aRes, ancRes, sRes] = await Promise.all([
+          api.getCourses(),
           api.getMaterials(),
           api.getAssignments(),
           api.getAnnouncements(),
+          api.getSubmissions(), // only this student's own
         ]);
-        if (cRes?.courses) setCourses(cRes.courses);
+        if (cRes?.courses) setCourses(markElectives(cRes.courses));
+        if (sRes?.submissions) setSubmissions(sRes.submissions);
         if (mRes?.materials) setMaterials(mRes.materials);
         if (aRes?.assignments) setAssignments(aRes.assignments);
         if (ancRes?.announcements) setAnnouncements(ancRes.announcements);
@@ -49,7 +53,16 @@ export default function StudentDashboard({ onNavigate }) {
   }, [currentUser]);
 
   const recentMaterials = materials.slice(0, 3);
-  const upcomingAssignments = assignments.slice(0, 3);
+  // Pending = active, not yet submitted; soonest deadline first.
+  const submittedIds = new Set(submissions.map((s) => s.assignmentId));
+  const pendingAssignments = assignments
+    .filter((a) => a.status === 'Active' && !submittedIds.has(a.id))
+    .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+  const upcomingAssignments = pendingAssignments.slice(0, 3);
+  const weekAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const newAnnouncements = announcements.filter((a) => new Date(a.date).getTime() > weekAgo).length;
+  const totalCredits = courses.reduce((sum, c) => sum + (c.credits || 0), 0);
+  const show = (n) => (loading ? '—' : n);
 
   return (
     <div className="space-y-6">
@@ -59,7 +72,8 @@ export default function StudentDashboard({ onNavigate }) {
         <div className="relative z-10 max-w-2xl">
           <div className="flex items-center gap-2 text-brand-200 text-xs font-semibold mb-2">
             <span className="badge-pill bg-brand-500/30 border border-brand-400/40 text-brand-100">
-              Semester 6 &bull; Section A
+              {currentUser?.semester ? `Semester ${currentUser.semester}` : 'Student'}
+              {currentUser?.section ? ` • Section ${currentUser.section}` : ''}
             </span>
             <span>CBIT Autonomous Department Cloud</span>
           </div>
@@ -97,30 +111,36 @@ export default function StudentDashboard({ onNavigate }) {
       {/* Academic Overview Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          title="Current CGPA"
-          value="8.92"
-          subtitle="Top 5% of B.E. Cohort"
-          trend="+0.14"
-          color="emerald"
-        />
-        <StatCard
-          title="Earned Credits"
-          value="114 / 160"
-          subtitle="71.2% Degree Completion"
-          color="brand"
-        />
-        <StatCard
           title="Enrolled Courses"
-          value="4 Courses"
-          subtitle="14 Active Credits"
+          value={show(`${courses.length} Courses`)}
+          subtitle={loading ? '' : `${courseMixLabel(courses)} • ${totalCredits} credits`}
           color="blue"
+          icon={BookOpen}
+          onClick={() => onNavigate('/student/courses')}
         />
         <StatCard
-          title="Attendance Metric"
-          value="94.2%"
-          subtitle="All Courses in Compliance"
-          trend="Eligible"
+          title="Course Materials"
+          value={show(materials.length)}
+          subtitle="Notes from your faculty"
+          color="brand"
+          icon={FileText}
+          onClick={() => onNavigate('/student/materials')}
+        />
+        <StatCard
+          title="Pending Assignments"
+          value={show(pendingAssignments.length)}
+          subtitle={pendingAssignments[0] ? `Next due ${new Date(pendingAssignments[0].dueDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}` : 'Nothing due'}
+          color="amber"
+          icon={Clock}
+          onClick={() => onNavigate('/student/assignments')}
+        />
+        <StatCard
+          title="Announcements"
+          value={show(announcements.length)}
+          subtitle={`${newAnnouncements} new this week`}
           color="emerald"
+          icon={Bell}
+          onClick={() => onNavigate('/student/announcements')}
         />
       </div>
 
@@ -155,8 +175,15 @@ export default function StudentDashboard({ onNavigate }) {
                 >
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <span className="badge-pill bg-brand-50 text-brand-700 border border-brand-200 font-mono text-[10px] font-bold">
-                        {course.code}
+                      <span className="flex items-center gap-1.5">
+                        <span className="badge-pill bg-brand-50 text-brand-700 border border-brand-200 font-mono text-[10px] font-bold">
+                          {course.code}
+                        </span>
+                        {course.isElective && (
+                          <span className="badge-pill bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-semibold">
+                            Elective
+                          </span>
+                        )}
                       </span>
                       <span className="text-[11px] text-cloud-500 font-medium">
                         {course.credits} Credits

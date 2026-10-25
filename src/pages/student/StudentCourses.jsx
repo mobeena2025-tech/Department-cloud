@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BookOpen, User, Layers, ArrowRight, Sparkles, CheckCircle2 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
+import { markElectives, courseMixLabel } from '../../services/courseKinds';
 
 export default function StudentCourses({ onNavigate }) {
   const { currentUser } = useAuth();
@@ -11,8 +12,8 @@ export default function StudentCourses({ onNavigate }) {
   useEffect(() => {
     async function fetchCourses() {
       try {
-        const res = await api.getCourses({ role: 'student', userId: currentUser?.id });
-        if (res?.courses) setCourses(res.courses);
+        const res = await api.getCourses();
+        if (res?.courses) setCourses(markElectives(res.courses));
       } finally {
         setLoading(false);
       }
@@ -26,7 +27,9 @@ export default function StudentCourses({ onNavigate }) {
         <div>
           <h1 className="text-xl font-bold text-cloud-900">Enrolled Courses</h1>
           <p className="text-xs text-cloud-500">
-            Official departmental curriculum enrollments for B.E. Semester 6
+            {currentUser?.semester ? `Semester ${currentUser.semester}` : 'Your courses'}
+            {currentUser?.section ? `, Section ${currentUser.section}` : ''}
+            {!loading && courses.length ? ` • ${courses.length} courses (${courseMixLabel(courses)})` : ''}
           </p>
         </div>
         <button
@@ -47,8 +50,15 @@ export default function StudentCourses({ onNavigate }) {
           >
             <div>
               <div className="flex items-center justify-between mb-3">
-                <span className="badge-pill bg-brand-50 text-brand-700 border border-brand-200 font-mono text-xs font-bold">
-                  {c.code}
+                <span className="flex items-center gap-1.5">
+                  <span className="badge-pill bg-brand-50 text-brand-700 border border-brand-200 font-mono text-xs font-bold">
+                    {c.code}
+                  </span>
+                  {c.isElective && (
+                    <span className="badge-pill bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-semibold">
+                      Elective
+                    </span>
+                  )}
                 </span>
                 <span className="text-xs font-semibold text-cloud-700 bg-cloud-100 px-2.5 py-1 rounded-full">
                   {c.credits} Credits

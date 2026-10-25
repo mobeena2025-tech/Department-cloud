@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import ChangePasswordModal from '../common/ChangePasswordModal';
+import Avatar from '../common/Avatar';
 import { useNotification } from '../../context/NotificationContext';
 
 export default function TopNav({ onNavigate, currentPath }) {
@@ -159,11 +160,7 @@ export default function TopNav({ onNavigate, currentPath }) {
               }}
               className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-cloud-100 transition-colors cursor-pointer"
             >
-              <img
-                src={currentUser?.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&auto=format&fit=crop&q=80'}
-                alt={currentUser?.name}
-                className="w-7 h-7 rounded-lg object-cover border border-cloud-200"
-              />
+              <Avatar name={currentUser?.name} size="sm" />
               <span className="text-xs font-semibold text-cloud-800 hidden md:block max-w-[120px] truncate">
                 {currentUser?.name?.split(' ')[0]}
               </span>

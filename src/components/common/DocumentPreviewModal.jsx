@@ -224,12 +224,12 @@ export default function DocumentPreviewModal({ material, isOpen, onClose }) {
                   </div>
                   <div className="p-3 rounded-lg bg-cloud-50 border border-cloud-200">
                     <span className="text-cloud-500 block mb-1">Course & Unit</span>
-                    <span className="font-semibold text-cloud-900">{material.courseName} ({material.unitTitle}) &bull; Sem {material.semester || 6}</span>
+                    <span className="font-semibold text-cloud-900">{material.courseName} ({material.unitTitle}) {material.semester ? <> &bull; Sem {material.semester}</> : null}</span>
                   </div>
                   <div className="p-3 rounded-lg bg-cloud-50 border border-cloud-200">
                     <span className="text-cloud-500 block mb-1">Object Storage Key</span>
                     <span className="font-mono text-[11px] font-semibold text-brand-700 break-all">{material.storagePath || "No file stored"}</span>
-                    <span className="text-[10px] text-cloud-400 block mt-0.5">{material.storageStatus || 'Simulated Private Object Storage'}</span>
+                    <span className="text-[10px] text-cloud-400 block mt-0.5">Private storage; opened with short-lived signed links</span>
                   </div>
                   <div className="p-3 rounded-lg bg-cloud-50 border border-cloud-200">
                     <span className="text-cloud-500 block mb-1">Access Policy & Permitted Roles</span>
@@ -240,16 +240,6 @@ export default function DocumentPreviewModal({ material, isOpen, onClose }) {
                   </div>
                 </div>
 
-                <div className="mt-4 pt-4 border-t border-cloud-200">
-                  <span className="text-xs text-cloud-500 block mb-2">Subject Tags:</span>
-                  <div className="flex flex-wrap gap-1.5">
-                    {material.tags?.map((tag) => (
-                      <span key={tag} className="badge-pill bg-cloud-100 text-cloud-700 text-xs">
-                        #{tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
               </div>
 
               <div className="cloud-card p-6">

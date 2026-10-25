@@ -95,6 +95,7 @@ export default function AdminDashboard({ onNavigate }) {
           subtitle={`${fmt(overview.totalEnrollments)} course enrollments`}
           color="brand"
           icon={Users}
+          onClick={() => onNavigate('/admin/students')}
         />
         <StatCard
           title="Faculty"
@@ -102,6 +103,7 @@ export default function AdminDashboard({ onNavigate }) {
           subtitle="Teaching accounts"
           color="emerald"
           icon={Briefcase}
+          onClick={() => onNavigate('/admin/faculty')}
         />
         <StatCard
           title="Courses"
@@ -109,6 +111,7 @@ export default function AdminDashboard({ onNavigate }) {
           subtitle={`${fmt(overview.activeAssignments)} active assignments`}
           color="blue"
           icon={BookOpen}
+          onClick={() => onNavigate('/admin/courses')}
         />
         <StatCard
           title="Academic Resources"
@@ -116,6 +119,7 @@ export default function AdminDashboard({ onNavigate }) {
           subtitle={`${fmt(overview.storageUsedMb)} MB stored`}
           color="purple"
           icon={FolderArchive}
+          onClick={() => onNavigate('/admin/materials')}
         />
       </div>
 

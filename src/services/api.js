@@ -142,8 +142,6 @@ export const api = {
   uploadMaterial: (formData) => fetchApi('/materials', { method: 'POST', body: formData }),
   updateMaterial: (id, data) => fetchApi(`/materials/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deleteMaterial: (id) => fetchApi(`/materials/${id}`, { method: 'DELETE' }),
-  smartClassify: (fileName, fileSize) => 
-    fetchApi('/materials/smart-classify', { method: 'POST', body: JSON.stringify({ fileName, fileSize }) }),
 
   // Assignments
   getAssignments: (params = {}) => {

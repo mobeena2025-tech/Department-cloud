@@ -138,7 +138,7 @@ export async function searchAcademicContent(user, query) {
     }
   }
   if (!lines.length) {
-    lines.push('Nothing matched. Try a course code (e.g. CS202), a unit ("unit 3"), or words from a material title or topic.');
+    lines.push('Nothing matched. Try a course code (e.g. OS), a unit ("unit 3"), or words from a material title or topic.');
   }
   lines.push('');
   lines.push('(Searched titles and topics only: none of the PDFs in your courses can be searched yet.)');

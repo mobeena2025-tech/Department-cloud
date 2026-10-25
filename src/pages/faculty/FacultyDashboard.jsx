@@ -4,7 +4,7 @@ import {
   FolderArchive,
   ClipboardList,
   Clock,
-  Sparkles,
+  Upload,
   Plus,
   BookOpen,
   ArrowRight,
@@ -16,7 +16,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../services/api';
 import StatCard from '../../components/common/StatCard';
-import SmartUploadModal from '../../components/faculty/SmartUploadModal';
+import UploadMaterialModal from '../../components/faculty/UploadMaterialModal';
 import CreateAssignmentModal from '../../components/faculty/CreateAssignmentModal';
 
 export default function FacultyDashboard({ onNavigate }) {
@@ -25,6 +25,7 @@ export default function FacultyDashboard({ onNavigate }) {
   const [materials, setMaterials] = useState([]);
   const [assignments, setAssignments] = useState([]);
   const [submissions, setSubmissions] = useState([]);
+  const [studentCount, setStudentCount] = useState(0);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showAssignmentModal, setShowAssignmentModal] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -32,12 +33,14 @@ export default function FacultyDashboard({ onNavigate }) {
   useEffect(() => {
     async function loadData() {
       try {
-        const [cRes, mRes, aRes, sRes] = await Promise.all([
-          api.getCourses({ role: 'faculty', userId: currentUser?.id }),
+        const [cRes, mRes, aRes, sRes, uRes] = await Promise.all([
+          api.getCourses(),
           api.getMaterials(),
           api.getAssignments(),
           api.getSubmissions(),
+          api.getUsers(), // for faculty: the students in courses they teach
         ]);
+        if (uRes?.users) setStudentCount(uRes.users.length);
         if (cRes?.courses) setCourses(cRes.courses);
         if (mRes?.materials) setMaterials(mRes.materials);
         if (aRes?.assignments) setAssignments(aRes.assignments);
@@ -50,6 +53,7 @@ export default function FacultyDashboard({ onNavigate }) {
   }, [currentUser]);
 
   const pendingSubmissionsCount = submissions.filter((s) => s.status === 'Submitted').length;
+  const show = (n) => (loading ? '—' : n);
 
   return (
     <div className="space-y-6">
@@ -68,7 +72,7 @@ export default function FacultyDashboard({ onNavigate }) {
               Welcome, {currentUser?.name}
             </h1>
             <p className="text-xs text-cloud-300 mt-1">
-              Manage syllabus notes, publish smart-tagged materials, assign problem sets, and evaluate student submissions.
+              Upload course notes, set assignments, and grade student submissions.
             </p>
           </div>
 
@@ -77,8 +81,8 @@ export default function FacultyDashboard({ onNavigate }) {
               onClick={() => setShowUploadModal(true)}
               className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-500 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
             >
-              <Sparkles className="w-4 h-4" />
-              Smart Upload Material
+              <Upload className="w-4 h-4" />
+              Upload Material
             </button>
             <button
               onClick={() => setShowAssignmentModal(true)}
@@ -94,33 +98,36 @@ export default function FacultyDashboard({ onNavigate }) {
       {/* Faculty Metric Stats (as requested in prompt) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
-          title="Total Students"
-          value="138 Enrolled"
-          subtitle="Across AI204 & AI301"
-          color="brand"
-          icon={Users}
+          title="My Courses"
+          value={show(courses.length)}
+          subtitle={courses.map((c) => c.code).join(', ') || 'None assigned yet'}
+          color="blue"
+          icon={BookOpen}
+          onClick={() => onNavigate('/faculty/courses')}
         />
         <StatCard
-          title="Materials Uploaded"
-          value={`${materials.length} Documents`}
-          subtitle="Indexed in Department Cloud"
+          title="My Students"
+          value={show(studentCount)}
+          subtitle="Enrolled in your courses"
+          color="brand"
+          icon={Users}
+          onClick={() => onNavigate('/faculty/students')}
+        />
+        <StatCard
+          title="Course Materials"
+          value={show(materials.length)}
+          subtitle="Uploaded to your courses"
           color="emerald"
           icon={FolderArchive}
+          onClick={() => onNavigate('/faculty/materials')}
         />
         <StatCard
           title="Pending Submissions"
-          value={`${pendingSubmissionsCount} Pending`}
-          subtitle="Ready for Faculty Evaluation"
-          trend="Action Needed"
+          value={show(pendingSubmissionsCount)}
+          subtitle={pendingSubmissionsCount ? 'Waiting for grading' : 'All graded'}
           color="amber"
           icon={ClipboardList}
-        />
-        <StatCard
-          title="Avg. Class Performance"
-          value="82.4%"
-          subtitle="Continuous Assessment Rate"
-          color="purple"
-          icon={TrendingUp}
+          onClick={() => onNavigate('/faculty/submissions')}
         />
       </div>
 
@@ -230,7 +237,7 @@ export default function FacultyDashboard({ onNavigate }) {
                         ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
                         : 'bg-amber-50 text-amber-800 border border-amber-200'
                     }`}>
-                      {sub.status === 'Graded' ? `Graded (${sub.grade}/25)` : 'Needs Grading'}
+                      {sub.status === 'Graded' ? `Graded (${sub.grade}/${sub.maxMarks ?? "?"})` : 'Needs Grading'}
                     </span>
                   </div>
                 </div>
@@ -251,11 +258,11 @@ export default function FacultyDashboard({ onNavigate }) {
               className="w-full text-left p-3 rounded-xl border border-cloud-200 hover:border-brand-300 hover:bg-brand-50/30 transition-all flex items-center gap-3 cursor-pointer group"
             >
               <div className="w-8 h-8 rounded-lg bg-brand-50 text-brand-600 flex items-center justify-center group-hover:bg-brand-600 group-hover:text-white transition-colors">
-                <Sparkles className="w-4 h-4" />
+                <Upload className="w-4 h-4" />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="text-xs font-bold text-cloud-900">Smart Upload Material</div>
-                <div className="text-[11px] text-cloud-500 truncate">AI auto-categorization & tagging</div>
+                <div className="text-xs font-bold text-cloud-900">Upload Material</div>
+                <div className="text-[11px] text-cloud-500 truncate">Add PDF notes to a course</div>
               </div>
             </button>
 
@@ -286,22 +293,12 @@ export default function FacultyDashboard({ onNavigate }) {
             </button>
           </div>
 
-          {/* Department Faculty Notice */}
-          <div className="cloud-card p-6 bg-cloud-50/60 border-cloud-200">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-cloud-500 mb-2">
-              Academic Term Notice
-            </h3>
-            <p className="text-xs text-cloud-700 leading-relaxed">
-              Mid-term internal assessment evaluations for B.E. 6th semester are scheduled to lock on <strong>Oct 06, 2026</strong>. Please ensure all assignment grades are finalized in the cloud gradebook.
-            </p>
-          </div>
-
         </div>
 
       </div>
 
       {/* Modals */}
-      <SmartUploadModal
+      <UploadMaterialModal
         isOpen={showUploadModal}
         onClose={() => setShowUploadModal(false)}
         onUploadSuccess={(newMat) => {

@@ -77,7 +77,7 @@ export default function Login({ onLoginSuccess }) {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="name@dac.test"
+                  placeholder="Your college email"
                   autoComplete="username"
                   required
                   className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-cloud-200 text-cloud-900 focus:outline-none focus:border-brand-500"

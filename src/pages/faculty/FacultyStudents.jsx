@@ -60,7 +60,6 @@ export default function FacultyStudents() {
       <div className="cloud-card overflow-hidden">
         <div className="px-6 py-3 border-b border-cloud-200 bg-cloud-50/70 flex items-center justify-between text-xs font-semibold text-cloud-500">
           <span>{filtered.length} Active Students</span>
-          <span>Semester 6 &bull; Autonomous Stream</span>
         </div>
 
         <div className="overflow-x-auto">
@@ -69,10 +68,8 @@ export default function FacultyStudents() {
               <tr>
                 <th className="py-3.5 px-6">Student Name</th>
                 <th className="py-3.5 px-6">Roll Number</th>
-                <th className="py-3.5 px-6">Current CGPA</th>
-                <th className="py-3.5 px-6">Section</th>
-                <th className="py-3.5 px-6">Status</th>
-                <th className="py-3.5 px-6 text-right">Academic Standing</th>
+                <th className="py-3.5 px-6">Semester &amp; Section</th>
+                <th className="py-3.5 px-6 text-right">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-cloud-100 text-cloud-800">
@@ -85,20 +82,12 @@ export default function FacultyStudents() {
                   <td className="py-3.5 px-6 font-mono font-semibold text-brand-700">
                     {stu.rollNo || '—'}
                   </td>
-                  <td className="py-3.5 px-6 font-mono font-bold text-cloud-800">
-                    {stu.cgpa ? stu.cgpa.toFixed(2) : '8.80'}
-                  </td>
                   <td className="py-3.5 px-6 font-mono">
-                    Sec {stu.section || 'A'}
-                  </td>
-                  <td className="py-3.5 px-6">
-                    <span className="badge-pill bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      {stu.status || 'Active'}
-                    </span>
+                    {stu.semester ? `Sem ${stu.semester}` : '—'}{stu.section ? ` - ${stu.section}` : ''}
                   </td>
                   <td className="py-3.5 px-6 text-right">
-                    <span className="badge-pill bg-brand-50 text-brand-700 border border-brand-200">
-                      Eligible for Internal Exams
+                    <span className="badge-pill bg-emerald-50 text-emerald-700 border border-emerald-200">
+                      {stu.status || 'Active'}
                     </span>
                   </td>
                 </tr>

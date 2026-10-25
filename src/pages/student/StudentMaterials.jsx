@@ -12,6 +12,7 @@ import {
   HardDrive
 } from 'lucide-react';
 import { api } from '../../services/api';
+import { courseOptions, semesterOptions } from '../../services/filterOptions';
 import DocumentPreviewModal from '../../components/common/DocumentPreviewModal';
 
 export default function StudentMaterials({ onNavigate }) {
@@ -47,7 +48,7 @@ export default function StudentMaterials({ onNavigate }) {
         m.title.toLowerCase().includes(q) ||
         (m.topic && m.topic.toLowerCase().includes(q)) ||
         (m.courseName && m.courseName.toLowerCase().includes(q)) ||
-        (m.tags && m.tags.some((t) => t.toLowerCase().includes(q)))
+        (m.courseCode && m.courseCode.toLowerCase().includes(q))
       );
     }
     return true;
@@ -103,10 +104,9 @@ export default function StudentMaterials({ onNavigate }) {
               className="w-full px-2.5 py-1.5 rounded-lg border border-cloud-200 text-xs text-cloud-700 bg-white"
             >
               <option value="ALL">All Subjects</option>
-              <option value="CS202">CS202 - DBMS</option>
-              <option value="AI204">AI204 - Neural Networks</option>
-              <option value="CS301">CS301 - Computer Networks</option>
-              <option value="AI302">AI302 - Data Science</option>
+              {courseOptions(materials).map((c) => (
+                <option key={c.id} value={c.id}>{c.label}</option>
+              ))}
             </select>
           </div>
 
@@ -136,9 +136,9 @@ export default function StudentMaterials({ onNavigate }) {
               className="w-full px-2.5 py-1.5 rounded-lg border border-cloud-200 text-xs text-cloud-700 bg-white"
             >
               <option value="ALL">All Semesters</option>
-              <option value="5">Semester 5</option>
-              <option value="6">Semester 6</option>
-              <option value="7">Semester 7</option>
+              {semesterOptions(materials).map((n) => (
+                <option key={n} value={n}>Semester {n}</option>
+              ))}
             </select>
           </div>
 
@@ -198,7 +198,7 @@ export default function StudentMaterials({ onNavigate }) {
                         {mat.materialType || 'PDF Notes'}
                       </span>
                       <span className="badge-pill bg-emerald-50 text-emerald-700 border border-emerald-200 text-[10px]">
-                        Sem {mat.semester || 6}
+                        Sem {mat.semester ?? '—'}
                       </span>
                     </div>
 
@@ -214,15 +214,6 @@ export default function StudentMaterials({ onNavigate }) {
                       <span>Uploaded by {mat.uploadedBy}</span>
                     </div>
 
-                    {mat.tags && mat.tags.length > 0 && (
-                      <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                        {mat.tags.slice(0, 4).map((tag) => (
-                          <span key={tag} className="badge-pill bg-cloud-100 text-cloud-600 text-[10px]">
-                            #{tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 </div>
 

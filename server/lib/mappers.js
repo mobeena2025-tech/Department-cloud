@@ -46,7 +46,6 @@ export function toMaterialResponse(m) {
     uploadedById: m.uploaded_by,
     downloads: 0,
 
-    tags: [],
     summary: m.description || '',
     visibility: 'Department / Enrolled',
     accessPermissions: 'Department Enrolled Only',

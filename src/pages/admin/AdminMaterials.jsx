@@ -15,6 +15,7 @@ import {
   Tag
 } from 'lucide-react';
 import { api } from '../../services/api';
+import { courseOptions, semesterOptions } from '../../services/filterOptions';
 import DocumentPreviewModal from '../../components/common/DocumentPreviewModal';
 import { useNotification } from '../../context/NotificationContext';
 
@@ -122,10 +123,9 @@ export default function AdminMaterials({ onNavigate }) {
               className="w-full px-2.5 py-1.5 rounded-lg border border-cloud-200 text-xs text-cloud-700 bg-white"
             >
               <option value="ALL">All Assigned Courses</option>
-              <option value="CS202">CS202 — Database Management Systems</option>
-              <option value="AI204">AI204 — Artificial Neural Networks</option>
-              <option value="CS301">CS301 — Computer Networks</option>
-              <option value="AI302">AI302 — Data Science</option>
+              {courseOptions(materials).map((c) => (
+                <option key={c.id} value={c.id}>{c.label}</option>
+              ))}
             </select>
           </div>
 
@@ -137,9 +137,9 @@ export default function AdminMaterials({ onNavigate }) {
               className="w-full px-2.5 py-1.5 rounded-lg border border-cloud-200 text-xs text-cloud-700 bg-white"
             >
               <option value="ALL">All Semesters</option>
-              <option value="5">Semester 5</option>
-              <option value="6">Semester 6</option>
-              <option value="7">Semester 7</option>
+              {semesterOptions(materials).map((n) => (
+                <option key={n} value={n}>Semester {n}</option>
+              ))}
             </select>
           </div>
 
@@ -188,7 +188,7 @@ export default function AdminMaterials({ onNavigate }) {
                       {mat.materialType || 'PDF Notes'}
                     </span>
                     <span className="badge-pill bg-purple-50 text-purple-700 border border-purple-200 text-[10px]">
-                      Sem {mat.semester || 6}
+                      Sem {mat.semester ?? '—'}
                     </span>
                   </div>
 

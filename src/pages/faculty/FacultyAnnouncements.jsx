@@ -94,7 +94,7 @@ export default function FacultyAnnouncements() {
                 required
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. AI204: Lab 3 Rescheduled to Thursday 2:00 PM"
+                placeholder="e.g. OS: Lab moved to Thursday 2:00 PM"
                 className="w-full px-3 py-2 rounded-xl border border-cloud-200 bg-white text-cloud-900 focus:outline-none focus:border-brand-500"
               />
             </div>

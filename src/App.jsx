@@ -85,9 +85,9 @@ export default function App() {
       return <AcademicAssistant />;
     }
 
-    // Dynamic Course Details Route: e.g. /courses/AI204 or /courses/CS301
+    // Course details: /courses/<course id>
     if (currentPath.startsWith('/courses/')) {
-      const courseId = currentPath.split('/')[2] || 'AI204';
+      const courseId = currentPath.split('/')[2] || '';
       return <CourseDetail courseId={courseId} onNavigate={navigate} />;
     }
 
@@ -133,7 +133,7 @@ export default function App() {
     if (currentPath === '/faculty/profile') {
       return (
         <AccessBoundary allowedRoles={['faculty', 'admin']} pageTitle="Faculty Profile & Credentials">
-          <FacultyProfile />
+          <FacultyProfile onNavigate={navigate} />
         </AccessBoundary>
       );
     }
@@ -146,7 +146,7 @@ export default function App() {
     }
     if (currentPath === '/faculty/materials') {
       return (
-        <AccessBoundary allowedRoles={['faculty', 'admin']} pageTitle="Faculty Material Management & Smart Upload">
+        <AccessBoundary allowedRoles={['faculty', 'admin']} pageTitle="Faculty Material Management">
           <FacultyMaterials onNavigate={navigate} />
         </AccessBoundary>
       );

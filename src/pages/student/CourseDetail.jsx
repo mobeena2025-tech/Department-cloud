@@ -20,7 +20,7 @@ import { api } from '../../services/api';
 import DocumentPreviewModal from '../../components/common/DocumentPreviewModal';
 import { useNotification } from '../../context/NotificationContext';
 
-export default function CourseDetail({ courseId = 'AI204', onNavigate }) {
+export default function CourseDetail({ courseId, onNavigate }) {
   const [course, setCourse] = useState(null);
   const [activeTab, setActiveTab] = useState('materials'); // 'materials' | 'overview' | 'assignments' | 'announcements'
   const [expandedUnits, setExpandedUnits] = useState([]); // expanded unit numbers

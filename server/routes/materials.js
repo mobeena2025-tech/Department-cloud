@@ -1,6 +1,5 @@
 import express from 'express';
 import supabase from '../supabase.js';
-import { classifyUploadedDocument } from '../services/classifier.js';
 import { findCourse, isUuid } from '../lib/courseLookup.js';
 import { requireRole } from '../lib/auth.js';
 import { enqueueIndex } from '../rag/indexer.js';
@@ -127,14 +126,6 @@ router.get('/:id', asyncHandler(async (req, res) => {
   }
 
   res.json({ success: true, material });
-}));
-
-// AI Smart Classification preview endpoint (file name based)
-router.post('/smart-classify', requireRole('faculty', 'admin'), asyncHandler(async (req, res) => {
-  const fileName = requiredString(req.body?.fileName, 'fileName', { max: 255 });
-  const fileSize = optionalString(req.body?.fileSize, 'fileSize', { max: 20 });
-  const classification = classifyUploadedDocument(fileName, fileSize);
-  res.json({ success: true, classification });
 }));
 
 // Upload Material endpoint (Faculty/Admin)

@@ -8,7 +8,7 @@ export default function CreateAssignmentModal({ isOpen, onClose, onCreated, cour
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
-    courseId: courses[0]?.id || 'AI204',
+    courseId: courses[0]?.id || '',
     unitNumber: 2,
     // Default due date: one week from now, 23:59 local time.
     dueDate: (() => {

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import {
   FolderArchive,
   Upload,
-  Sparkles,
   Search,
   Filter,
   FileText,
@@ -18,7 +17,8 @@ import {
   Tag
 } from 'lucide-react';
 import { api } from '../../services/api';
-import SmartUploadModal from '../../components/faculty/SmartUploadModal';
+import { courseOptions, semesterOptions } from '../../services/filterOptions';
+import UploadMaterialModal from '../../components/faculty/UploadMaterialModal';
 import DocumentPreviewModal from '../../components/common/DocumentPreviewModal';
 import { useNotification } from '../../context/NotificationContext';
 import { useAuth } from '../../context/AuthContext';
@@ -45,11 +45,6 @@ export default function FacultyMaterials({ onNavigate }) {
     title: '',
     topic: '',
     unitNumber: 1,
-    semester: 6,
-    materialType: 'PDF Notes',
-    accessPermissions: 'Department Enrolled Only',
-    downloadPermitted: true,
-    tags: '',
     summary: '',
   });
 
@@ -74,11 +69,6 @@ export default function FacultyMaterials({ onNavigate }) {
       title: mat.title || '',
       topic: mat.topic || '',
       unitNumber: mat.unitNumber || 1,
-      semester: mat.semester || 6,
-      materialType: mat.materialType || 'PDF Notes',
-      accessPermissions: mat.accessPermissions || 'Department Enrolled Only',
-      downloadPermitted: mat.downloadPermitted !== false,
-      tags: Array.isArray(mat.tags) ? mat.tags.join(', ') : (mat.tags || ''),
       summary: mat.summary || '',
     });
   };
@@ -89,11 +79,10 @@ export default function FacultyMaterials({ onNavigate }) {
 
     try {
       const payload = {
-        ...editForm,
+        title: editForm.title,
+        topic: editForm.topic,
+        summary: editForm.summary,
         unitNumber: Number(editForm.unitNumber),
-        semester: Number(editForm.semester),
-        tags: editForm.tags.split(',').map((t) => t.trim()).filter(Boolean),
-        editorName: currentUser?.name || 'Faculty Member',
       };
 
       const res = await api.updateMaterial(editingMaterial.id, payload);
@@ -139,7 +128,7 @@ export default function FacultyMaterials({ onNavigate }) {
         m.title.toLowerCase().includes(q) ||
         (m.topic && m.topic.toLowerCase().includes(q)) ||
         (m.courseName && m.courseName.toLowerCase().includes(q)) ||
-        (m.tags && m.tags.some((t) => t.toLowerCase().includes(q)))
+        (m.courseCode && m.courseCode.toLowerCase().includes(q))
       );
     }
     return true;
@@ -164,19 +153,11 @@ export default function FacultyMaterials({ onNavigate }) {
 
         <div className="flex items-center gap-2 self-start">
           <button
-            onClick={() => onNavigate ? onNavigate('/faculty/upload') : setShowUploadModal(true)}
+            onClick={() => setShowUploadModal(true)}
             className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
           >
             <Upload className="w-4 h-4" />
             Upload New Material
-          </button>
-          <button
-            onClick={() => setShowUploadModal(true)}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-cloud-100 hover:bg-brand-50 hover:text-brand-700 text-cloud-700 text-xs font-semibold transition-colors cursor-pointer"
-            title="Quick Smart Modal"
-          >
-            <Sparkles className="w-3.5 h-3.5" />
-            Quick Modal
           </button>
         </div>
       </div>
@@ -189,7 +170,7 @@ export default function FacultyMaterials({ onNavigate }) {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search uploaded materials by title, topic, course, or tags..."
+            placeholder="Search uploaded materials by title, topic, or course..."
             className="w-full pl-9 pr-3 py-2 rounded-xl border border-cloud-200 text-xs text-cloud-900 focus:outline-none focus:border-brand-500"
           />
         </div>
@@ -205,10 +186,9 @@ export default function FacultyMaterials({ onNavigate }) {
               className="w-full px-2.5 py-1.5 rounded-lg border border-cloud-200 text-xs text-cloud-700 bg-white"
             >
               <option value="ALL">All Subjects</option>
-              <option value="CS202">CS202 - Database Systems</option>
-              <option value="AI204">AI204 - Neural Networks</option>
-              <option value="CS301">CS301 - Computer Networks</option>
-              <option value="AI302">AI302 - Data Science</option>
+              {courseOptions(materials).map((c) => (
+                <option key={c.id} value={c.id}>{c.label}</option>
+              ))}
             </select>
           </div>
 
@@ -238,9 +218,9 @@ export default function FacultyMaterials({ onNavigate }) {
               className="w-full px-2.5 py-1.5 rounded-lg border border-cloud-200 text-xs text-cloud-700 bg-white"
             >
               <option value="ALL">All Semesters</option>
-              <option value="5">Semester 5</option>
-              <option value="6">Semester 6</option>
-              <option value="7">Semester 7</option>
+              {semesterOptions(materials).map((n) => (
+                <option key={n} value={n}>Semester {n}</option>
+              ))}
             </select>
           </div>
 
@@ -336,15 +316,6 @@ export default function FacultyMaterials({ onNavigate }) {
                       )}
                     </div>
 
-                    {mat.tags?.length > 0 && (
-                      <div className="flex flex-wrap items-center gap-1 mt-1.5">
-                        {mat.tags.slice(0, 4).map((tag) => (
-                          <span key={tag} className="badge-pill bg-cloud-100 text-cloud-600 text-[10px]">
-                            #{tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 </div>
 
@@ -391,7 +362,7 @@ export default function FacultyMaterials({ onNavigate }) {
             <div className="px-5 py-4 border-b border-cloud-200 bg-cloud-50 flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-sm text-cloud-900">Edit Resource Metadata</h3>
-                <p className="text-[11px] text-cloud-500">Update curriculum classification and access flags</p>
+                <p className="text-[11px] text-cloud-500">Change the title, unit or topic.</p>
               </div>
               <button
                 onClick={() => setEditingMaterial(null)}
@@ -413,7 +384,7 @@ export default function FacultyMaterials({ onNavigate }) {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div>
                 <div>
                   <label className="font-semibold text-cloud-700 block mb-1">Curriculum Unit</label>
                   <select
@@ -428,49 +399,6 @@ export default function FacultyMaterials({ onNavigate }) {
                     <option value={5}>Unit 5</option>
                   </select>
                 </div>
-
-                <div>
-                  <label className="font-semibold text-cloud-700 block mb-1">Semester</label>
-                  <select
-                    value={editForm.semester}
-                    onChange={(e) => setEditForm({ ...editForm, semester: Number(e.target.value) })}
-                    className="w-full px-2.5 py-1.5 rounded-lg border border-cloud-200 text-cloud-900 bg-white"
-                  >
-                    <option value={5}>Semester 5</option>
-                    <option value={6}>Semester 6</option>
-                    <option value={7}>Semester 7</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-semibold text-cloud-700 block mb-1">Material Type</label>
-                  <select
-                    value={editForm.materialType}
-                    onChange={(e) => setEditForm({ ...editForm, materialType: e.target.value })}
-                    className="w-full px-2.5 py-1.5 rounded-lg border border-cloud-200 text-cloud-900 bg-white"
-                  >
-                    <option value="PDF Notes">PDF Notes</option>
-                    <option value="PPT Presentation">PPT Presentation</option>
-                    <option value="Question Paper">Question Paper</option>
-                    <option value="Lab Material">Lab Material</option>
-                    <option value="Reference Document">Reference Document</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="font-semibold text-cloud-700 block mb-1">Access Boundary</label>
-                  <select
-                    value={editForm.accessPermissions}
-                    onChange={(e) => setEditForm({ ...editForm, accessPermissions: e.target.value })}
-                    className="w-full px-2.5 py-1.5 rounded-lg border border-cloud-200 text-cloud-900 bg-white"
-                  >
-                    <option value="Department Enrolled Only">Enrolled Only</option>
-                    <option value="Read & Download">Open Access</option>
-                    <option value="Restricted View Only">Restricted View</option>
-                  </select>
-                </div>
               </div>
 
               <div>
@@ -481,29 +409,6 @@ export default function FacultyMaterials({ onNavigate }) {
                   onChange={(e) => setEditForm({ ...editForm, topic: e.target.value })}
                   className="w-full px-3 py-1.5 rounded-lg border border-cloud-200 text-cloud-900"
                 />
-              </div>
-
-              <div>
-                <label className="font-semibold text-cloud-700 block mb-1">Tags (Comma separated)</label>
-                <input
-                  type="text"
-                  value={editForm.tags}
-                  onChange={(e) => setEditForm({ ...editForm, tags: e.target.value })}
-                  className="w-full px-3 py-1.5 rounded-lg border border-cloud-200 text-cloud-900 font-mono text-[11px]"
-                />
-              </div>
-
-              <div className="flex items-center gap-2 pt-1">
-                <input
-                  type="checkbox"
-                  id="editDownloadPermitted"
-                  checked={editForm.downloadPermitted}
-                  onChange={(e) => setEditForm({ ...editForm, downloadPermitted: e.target.checked })}
-                  className="w-4 h-4 rounded text-brand-600"
-                />
-                <label htmlFor="editDownloadPermitted" className="text-cloud-800 font-medium cursor-pointer">
-                  Permit students to download offline copy
-                </label>
               </div>
 
               <div className="pt-3 border-t border-cloud-200 flex items-center justify-end gap-2">
@@ -526,8 +431,8 @@ export default function FacultyMaterials({ onNavigate }) {
         </div>
       )}
 
-      {/* Smart Upload Modal */}
-      <SmartUploadModal
+      {/* Upload Modal */}
+      <UploadMaterialModal
         isOpen={showUploadModal}
         onClose={() => setShowUploadModal(false)}
         onUploadSuccess={(newMat) => {

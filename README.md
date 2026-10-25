@@ -78,7 +78,11 @@ Copy `.env.example` to `.env` and fill it in:
 `.env` is git-ignored. Nothing in `src/` reads these variables, so no key ends up
 in the browser bundle.
 
-### 5. Create the demo accounts
+### 5. Create the demo accounts (new, empty projects only)
+
+> **Don't run this on the live class project.** The demo courses and accounts were
+> removed there on 2026-10-25 so they don't mix with the real class; only
+> `admin@dac.test` was kept. Real people come from `npm run import-people`.
 
 ```bash
 npm run seed
@@ -113,8 +117,8 @@ Use the password from `seed-credentials.txt`.
 
 1. **Faculty uploads.** Sign in as `faculty.a@dac.test`. Go to **Upload Material**.
    The course list only shows CS202 and AI204. Choose a PDF (max 10 MB), pick
-   **CS202**, enter a title, click **Publish to Department Cloud**. The success
-   banner shows the storage path `courses/<course-id>/…`. Sign out (avatar → Sign Out).
+   **CS202**, enter a title, click **Upload**. The file appears under **My Materials**.
+   Sign out (avatar → Sign Out).
 2. **Enrolled student opens it.** Sign in as `student.a@dac.test`. Open **Courses →
    CS202** (or go to `/courses/CS202`). The new file is listed under its unit. Click it,
    then **Open / Download**: the PDF opens in a new tab through a short-lived link.
@@ -297,7 +301,7 @@ server/
   routes/             auth, courses (+ people/enrollment), materials, assignments, submissions,
                       announcements, users, audit-logs, analytics, ai-search
   rag/                free RAG: PDF text, passages, local embeddings, indexer, search
-  services/           keyword assistant (fallback, assignments), classifier (file-name suggestions)
+  services/           keyword assistant (fallback, assignments)
   scripts/seed.js     demo accounts + enrollments
 src/                  React app (pages per role, components, api client)
 supabase/
@@ -316,8 +320,9 @@ test/                 server tests
   documents or answer what the notes don't contain. Scanned (image-only) PDFs have no
   text to search (no OCR). Writing full answers would need a paid model (e.g. Claude),
   which can be added on top of the same retrieval later.
-- **Smart Upload suggestions** come from simple keywords in the file name, not from the
-  PDF; faculty should check them.
+- **Core vs elective** is worked out from enrollments, not stored: a student's core
+  courses are the ones the whole class takes, so a course with fewer students than
+  their biggest course is shown as their elective (e.g. 8 core + 1 elective).
 - **Enrollment is per student and per course.** There is no bulk import (e.g. from a
   CSV) or "enroll the whole semester" button; the Manage People window lets you tick
   several students at once.
