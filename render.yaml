@@ -7,8 +7,9 @@ services:
     runtime: node
     plan: free
     region: singapore
-    # Dev dependencies (Vite) are needed to build the web pages.
-    buildCommand: npm ci --include=dev && npm run build
+    # Dev dependencies (Vite) are needed to build the web pages; the free
+    # search model is downloaded during the build (no API key needed).
+    buildCommand: npm ci --include=dev && npm run build && npm run prefetch-models
     startCommand: npm start
     healthCheckPath: /api/health
     autoDeploy: true

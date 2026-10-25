@@ -3,6 +3,7 @@ import supabase from '../supabase.js';
 import { classifyUploadedDocument } from '../services/classifier.js';
 import { findCourse, isUuid } from '../lib/courseLookup.js';
 import { requireRole } from '../lib/auth.js';
+import { enqueueIndex } from '../rag/indexer.js';
 import { recordAuditLog } from '../lib/audit.js';
 import { visibleCourseIds, assertCanViewCourse, assertCanManageCourse } from '../lib/access.js';
 import {
@@ -203,11 +204,26 @@ router.post('/', requireRole('faculty', 'admin'), uploadSinglePdf, asyncHandler(
     details: `Uploaded ${formatFileSize(req.file.size)} ${materialType} to ${storagePath}.`,
   });
 
+  // Make the PDF searchable for the assistant, in the background.
+  enqueueIndex(inserted.id, req.file.buffer);
+
   res.status(201).json({
     success: true,
     message: 'Material uploaded successfully',
     material: toMaterialResponse(inserted),
   });
+}));
+
+// Re-run text indexing for one material (e.g. after a failure).
+router.post('/:id/reindex', requireRole('faculty', 'admin'), asyncHandler(async (req, res) => {
+  const id = requireMaterialId(req.params.id);
+  const { data: existing, error } = await supabase
+    .from('materials').select('id, course_id').eq('id', id).maybeSingle();
+  if (error) throw dbError('Material lookup error', error);
+  if (!existing) throw new HttpError(404, 'Material not found');
+  await assertCanManageCourse(req.user, existing.course_id);
+  enqueueIndex(id);
+  res.status(202).json({ success: true, message: 'Indexing started' });
 }));
 
 // Update material metadata (Faculty/Admin)

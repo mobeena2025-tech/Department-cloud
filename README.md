@@ -175,6 +175,39 @@ npm run import-people -- private/people.csv
 
 ---
 
+## Academic Assistant (free RAG)
+
+The assistant answers questions from **inside the course PDFs**, with no paid AI service
+and no API key:
+
+1. **Indexing:** when a PDF is uploaded, the server extracts its text page by page
+   (`unpdf`), splits it into ~800-character passages, and turns each passage into 384
+   numbers (an *embedding*) with the open **bge-small-en-v1.5** model, run locally by
+   `@huggingface/transformers`. Passages are stored in `material_chunks` (pgvector).
+2. **Retrieval:** a question is embedded the same way; `match_material_chunks` finds the
+   closest passages **only within courses the user can access**, and exact words from the
+   question add a small bonus (hybrid search).
+3. **Answer:** the sentences of those passages are ranked against the question and the
+   best 1-3 are shown, quoted, each with a citation to its PDF and page. If nothing is
+   close enough it says so instead of guessing. Nothing is generated.
+
+Setup: run [`supabase/migrations/006_rag_passages.sql`](supabase/migrations/006_rag_passages.sql)
+(already in `schema.sql`), then index existing PDFs once:
+
+```bash
+npm run index-materials
+```
+
+New uploads are indexed automatically in the background. Faculty see the status on
+**My Materials** (*Searchable by Assistant*, *Indexing…*, *Scanned PDF: no searchable
+text*). The model (~34 MB) downloads once into `.models-cache/` (git-ignored); Render
+downloads it during the build. Measured: ~0.3 s per question and ~7 s to index a
+30-page PDF on a laptop, peak memory ~280 MB; expect a few seconds per question on
+Render's free plan. Until something is indexed, the assistant falls back to keyword
+search over titles and topics.
+
+---
+
 ## Putting it online (Render, free)
 
 In production one Node service runs the API **and** serves the built React app, so the
@@ -217,6 +250,7 @@ Correct sign-ins never count.
 | `npm test` | server tests (Node's built-in test runner) |
 | `npm run lint` | ESLint (0 errors; remaining warnings are unused imports in older pages) |
 | `npm run seed` | create/refresh demo accounts, teaching assignments and enrollments |
+| `npm run index-materials` | make existing PDFs searchable by the assistant (`-- --all` to redo all) |
 
 ### Tests
 
@@ -250,7 +284,8 @@ server/
                       audit log, response shapes
   routes/             auth, courses (+ people/enrollment), materials, assignments, submissions,
                       announcements, users, audit-logs, analytics, ai-search
-  services/           assistant (keyword search), classifier (file-name suggestions)
+  rag/                free RAG: PDF text, passages, local embeddings, indexer, search
+  services/           keyword assistant (fallback, assignments), classifier (file-name suggestions)
   scripts/seed.js     demo accounts + enrollments
 src/                  React app (pages per role, components, api client)
 supabase/
@@ -264,9 +299,11 @@ test/                 server tests
 
 ## Known limitations
 
-- **Assistant is a prototype.** It matches words in material/assignment titles, topics
-  and descriptions within your own courses. It does not read PDF contents and does not
-  generate answers; the page says so.
+- **The assistant quotes, it doesn't write.** The free version returns the most relevant
+  sentences from your PDFs with page citations; it cannot rephrase, summarise across
+  documents or answer what the notes don't contain. Scanned (image-only) PDFs have no
+  text to search (no OCR). Writing full answers would need a paid model (e.g. Claude),
+  which can be added on top of the same retrieval later.
 - **Smart Upload suggestions** come from simple keywords in the file name, not from the
   PDF; faculty should check them.
 - **Enrollment is per student and per course.** There is no bulk import (e.g. from a

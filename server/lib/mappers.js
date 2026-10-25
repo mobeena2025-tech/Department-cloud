@@ -36,6 +36,9 @@ export function toMaterialResponse(m) {
     fileType: m.file_type || 'PDF',
     materialType: m.file_type || 'PDF',
     storagePath: m.storage_path,
+    // Assistant search status: pending | indexing | indexed | no_text | failed
+    indexStatus: m.index_status ?? null,
+    pageCount: m.page_count ?? null,
     size: formatFileSize(m.file_size),
 
     uploadDate: m.created_at ? new Date(m.created_at).toISOString().split('T')[0] : null,

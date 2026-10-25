@@ -13,9 +13,12 @@
     "test": "node --test test/*.test.js",
     "lint": "eslint .",
     "import-people": "node server/scripts/importPeople.js",
-    "start": "node server/index.js"
+    "start": "node server/index.js",
+    "index-materials": "node server/scripts/indexMaterials.js",
+    "prefetch-models": "node server/scripts/prefetchModels.js"
   },
   "dependencies": {
+    "@huggingface/transformers": "3.8.1",
     "@supabase/supabase-js": "^2.117.2",
     "clsx": "^2.1.1",
     "cors": "^2.8.5",
@@ -25,7 +28,8 @@
     "multer": "^2.4.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "tailwind-merge": "^3.0.1"
+    "tailwind-merge": "^3.0.1",
+    "unpdf": "1.8.1"
   },
   "devDependencies": {
     "@eslint/js": "9.17.0",
@@ -42,5 +46,8 @@
   },
   "engines": {
     "node": ">=20"
+  },
+  "overrides": {
+    "sharp": "0.35.5"
   }
 }

@@ -1,4 +1,6 @@
 import app from './app.js';
+import { resumePending } from './rag/indexer.js';
+import { warmUp } from './rag/embeddings.js';
 
 // Hosts like Render tell the app which port to use through PORT. Locally PORT
 // may belong to the Vite dev server, so it is only used in production.
@@ -11,4 +13,17 @@ app.listen(PORT, () => {
   console.log(` Port: ${PORT} | Database: Supabase`);
   console.log(` Health check: http://localhost:${PORT}/api/health`);
   console.log('====================================================');
+
+  // Free RAG: load the local model in the background, then finish indexing
+  // any PDFs left pending by a restart.
+  setTimeout(async () => {
+    try {
+      await warmUp();
+      console.log('[RAG] search model ready');
+      const n = await resumePending();
+      if (n) console.log(`[RAG] indexing ${n} pending PDF(s) in the background`);
+    } catch (err) {
+      console.warn('[RAG] model not available yet; the assistant uses keyword search:', err.message);
+    }
+  }, 2000);
 });

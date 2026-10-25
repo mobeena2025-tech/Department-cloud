@@ -9,3 +9,6 @@ seed-credentials.txt
 
 # Real people data and generated passwords: never commit
 private/
+
+# Downloaded free AI models (re-downloaded automatically)
+.models-cache/

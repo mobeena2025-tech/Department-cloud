@@ -304,15 +304,36 @@ export default function FacultyMaterials({ onNavigate }) {
                     </div>
 
                     <p className="text-[11px] text-cloud-500 mt-1">
-                      <strong className="text-cloud-800">{mat.courseName}</strong> &bull; {mat.unitTitle} &bull; Semester {mat.semester || 6}
+                      <strong className="text-cloud-800">{mat.courseName}</strong> &bull; {mat.unitTitle} &bull; Semester {mat.semester ?? '—'}
                     </p>
 
                     <div className="flex items-center gap-2 text-[10px] font-mono text-cloud-400 mt-1 truncate">
                       <span className="text-brand-600 font-medium">{mat.storagePath}</span>
                       <span>&bull;</span>
                       <span>{mat.size}</span>
-                      <span>&bull;</span>
-                      <span>{mat.downloads || 0} Downloads</span>
+                      {mat.indexStatus && (
+                        <>
+                          <span>&bull;</span>
+                          <span
+                            className={
+                              mat.indexStatus === 'indexed'
+                                ? 'text-emerald-700'
+                                : mat.indexStatus === 'failed' || mat.indexStatus === 'no_text'
+                                  ? 'text-amber-700'
+                                  : 'text-cloud-500'
+                            }
+                            title="Whether the Assistant can search inside this PDF"
+                          >
+                            {{
+                              indexed: 'Searchable by Assistant',
+                              pending: 'Waiting to be indexed',
+                              indexing: 'Indexing…',
+                              no_text: 'Scanned PDF: no searchable text',
+                              failed: 'Indexing failed',
+                            }[mat.indexStatus] || mat.indexStatus}
+                          </span>
+                        </>
+                      )}
                     </div>
 
                     {mat.tags?.length > 0 && (

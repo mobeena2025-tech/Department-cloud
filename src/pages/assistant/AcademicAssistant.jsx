@@ -21,15 +21,15 @@ import DocumentPreviewModal from '../../components/common/DocumentPreviewModal';
 import { useNotification } from '../../context/NotificationContext';
 
 const SUGGESTED_QUERIES = [
-  'Find DBMS unit 3 material',
+  'What is the vanishing gradient problem?',
+  'Difference between 3NF and BCNF',
+  'Explain the TCP three-way handshake',
   'Show my upcoming assignments',
-  'Normalization notes',
-  'Which document covers CNN pooling?',
 ];
 
 export default function AcademicAssistant() {
   const { addToast } = useNotification();
-  const [query, setQuery] = useState('Find DBMS unit 3 material');
+  const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const [selectedMaterial, setSelectedMaterial] = useState(null);
@@ -82,7 +82,7 @@ export default function AcademicAssistant() {
             </span>
           </div>
           <p className="text-xs text-cloud-500 mt-0.5">
-            Finds materials and assignments in your own courses
+            Answers questions from inside your course PDFs, with page references
           </p>
         </div>
       </div>
@@ -91,9 +91,10 @@ export default function AcademicAssistant() {
       <div className="p-3.5 rounded-xl bg-brand-50/70 border border-brand-200 text-xs text-brand-900 flex items-start gap-2.5">
         <Info className="w-4 h-4 text-brand-600 flex-shrink-0 mt-0.5" />
         <div className="leading-relaxed text-[11px]">
-          <strong className="font-semibold text-brand-950">Prototype: </strong>
-          This assistant searches the titles, topics and descriptions of materials and assignments in the courses you
-          are enrolled in or teach. It matches words; it does not read inside PDFs and does not write answers.
+          <strong className="font-semibold text-brand-950">How it works (free, prototype): </strong>
+          It searches the text inside the PDFs of the courses you are enrolled in or teach, by meaning as well as by
+          keywords, and quotes the sentences that best answer your question with their page numbers. It does not
+          write new text, so check the cited pages. Scanned (image-only) PDFs can't be searched.
         </div>
       </div>
 
@@ -182,10 +183,10 @@ export default function AcademicAssistant() {
               pipelineStep >= 2 ? 'bg-white border-brand-300 shadow-2xs' : 'bg-cloud-100/50 border-cloud-200 opacity-60'
             }`}>
               <div className="flex items-center justify-between mb-0.5">
-                <span className="font-bold text-cloud-900">2. Keyword Match</span>
+                <span className="font-bold text-cloud-900">2. Meaning Search</span>
                 {pipelineStep >= 2 && <CheckCircle2 className="w-3.5 h-3.5 text-brand-600" />}
               </div>
-              <p className="text-cloud-500 text-[10px]">Titles, topics, descriptions</p>
+              <p className="text-cloud-500 text-[10px]">Inside your course PDFs</p>
             </div>
 
             <div className={`p-2.5 rounded-xl border transition-all ${
@@ -202,10 +203,10 @@ export default function AcademicAssistant() {
               pipelineStep >= 4 ? 'bg-white border-brand-300 shadow-2xs' : 'bg-cloud-100/50 border-cloud-200 opacity-60'
             }`}>
               <div className="flex items-center justify-between mb-0.5">
-                <span className="font-bold text-cloud-900">4. Results</span>
+                <span className="font-bold text-cloud-900">4. Answer</span>
                 {pipelineStep >= 4 && <CheckCircle2 className="w-3.5 h-3.5 text-brand-600" />}
               </div>
-              <p className="text-cloud-500 text-[10px]">Ranked by matches</p>
+              <p className="text-cloud-500 text-[10px]">Quoted, with page numbers</p>
             </div>
           </div>
         </div>
@@ -223,8 +224,14 @@ export default function AcademicAssistant() {
                   <Sparkles className="w-4 h-4" />
                 </div>
                 <div>
-                  <h2 className="text-xs font-bold text-cloud-900">Search Results</h2>
-                  <span className="text-[10px] text-cloud-500">Keyword search over your courses</span>
+                  <h2 className="text-xs font-bold text-cloud-900">
+                    {result.method === 'rag-extractive' ? (result.found ? 'Answer from your notes' : 'No clear answer found') : 'Search Results'}
+                  </h2>
+                  <span className="text-[10px] text-cloud-500">
+                    {result.method === 'rag-extractive'
+                      ? 'Sentences quoted from your course PDFs'
+                      : 'Matched titles and topics (no PDF text indexed yet)'}
+                  </span>
                 </div>
               </div>
 
@@ -233,9 +240,27 @@ export default function AcademicAssistant() {
               </span>
             </div>
 
-            {/* Answer Text */}
+            {/* Answer Text: quoted sentences, each with a citation to its source */}
             <div className="text-xs text-cloud-800 leading-relaxed whitespace-pre-line bg-cloud-50/40 p-4 rounded-xl border border-cloud-100 font-sans">
-              {result.answer}
+              {result.answerSentences?.length > 0
+                ? result.answerSentences.map((s, i) => {
+                    const src = result.sources?.[s.source - 1];
+                    return (
+                      <span key={i}>
+                        {s.text}
+                        {src && (
+                          <button
+                            onClick={() => handlePreviewSource(src)}
+                            title={`${src.title}${src.page ? `, page ${src.page}` : ''}`}
+                            className="mx-1 align-super text-[9px] font-bold text-brand-700 bg-brand-50 border border-brand-200 rounded px-1 cursor-pointer hover:bg-brand-100"
+                          >
+                            [{s.source}]
+                          </button>
+                        )}{' '}
+                      </span>
+                    );
+                  })
+                : result.answer}
             </div>
 
             {/* Related Questions Chips */}
@@ -263,19 +288,19 @@ export default function AcademicAssistant() {
             <div className="cloud-card p-5 space-y-3">
               <h3 className="text-xs font-bold text-cloud-900 uppercase tracking-wider text-cloud-400 flex items-center gap-1.5">
                 <BookOpen className="w-4 h-4 text-brand-600" />
-                Matching Materials ({result.sources.length})
+                {result.method === 'rag-extractive' ? 'Sources' : 'Matching Materials'} ({result.sources.length})
               </h3>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                {result.sources.map((src) => (
+                {result.sources.map((src, i) => (
                   <div
-                    key={src.materialId}
+                    key={`${src.materialId}-${src.page ?? ''}-${i}`}
                     className="p-3.5 rounded-xl border border-cloud-200 bg-white hover:border-brand-300 hover:shadow-2xs transition-all flex flex-col justify-between"
                   >
                     <div>
                       <div className="flex items-center justify-between gap-1 mb-1">
                         <span className="font-mono text-[10px] font-bold text-brand-700 bg-brand-50 px-1.5 py-0.5 rounded">
-                          {src.courseCode}
+                          {result.method === 'rag-extractive' ? `[${i + 1}] ` : ''}{src.courseCode}
                         </span>
                         <span className="text-[10px] font-semibold text-emerald-700">
                           {src.relevance}% Match
@@ -287,7 +312,7 @@ export default function AcademicAssistant() {
                       </h4>
 
                       <p className="text-[10px] text-cloud-500 mt-1 line-clamp-1">
-                        {src.unit}
+                        {src.unit}{src.page ? ` • page ${src.page}` : ''}
                       </p>
 
                       <p className="text-[11px] text-cloud-600 mt-2 line-clamp-3 bg-cloud-50 p-2 rounded-lg border border-cloud-100 italic">

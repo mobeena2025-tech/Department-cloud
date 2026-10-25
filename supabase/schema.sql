@@ -84,6 +84,13 @@ create table if not exists public.materials (
   storage_path text,              -- path inside the academic-materials bucket, never a URL
   file_size    bigint,            -- bytes
   uploaded_by  uuid references public.profiles(id) on delete set null,
+  -- Assistant search (free RAG) status for this PDF
+  index_status text not null default 'pending'
+               check (index_status in ('pending', 'indexing', 'indexed', 'no_text', 'failed')),
+  index_error  text,
+  indexed_at   timestamptz,
+  page_count   int,
+  chunk_count  int,
   created_at   timestamptz not null default now()
 );
 create index if not exists materials_course_id_idx on public.materials(course_id);
@@ -162,6 +169,48 @@ create table if not exists public.audit_logs (
 create index if not exists audit_logs_created_idx on public.audit_logs(created_at desc);
 create index if not exists audit_logs_action_idx  on public.audit_logs(action, created_at desc);
 
+-- =========================================================== free RAG
+
+-- Text passages from uploaded PDFs with embeddings (384 numbers from the free
+-- bge-small model, computed on our own server). pgvector ships with Supabase.
+create extension if not exists vector with schema extensions;
+
+create table if not exists public.material_chunks (
+  id          bigint generated always as identity primary key,
+  material_id uuid not null references public.materials(id) on delete cascade,
+  course_id   uuid not null references public.courses(id)   on delete cascade,
+  page        int  not null,
+  chunk_index int  not null,
+  content     text not null,
+  embedding   extensions.vector(384) not null,
+  created_at  timestamptz not null default now()
+);
+create index if not exists material_chunks_material_idx on public.material_chunks(material_id);
+create index if not exists material_chunks_course_idx   on public.material_chunks(course_id);
+create index if not exists material_chunks_embedding_idx
+  on public.material_chunks using hnsw (embedding extensions.vector_cosine_ops);
+
+-- Nearest passages to a question within the given courses (null = all).
+create or replace function public.match_material_chunks(
+  query_embedding extensions.vector(384),
+  course_ids uuid[],
+  match_count int default 20
+)
+returns table (id bigint, material_id uuid, course_id uuid, page int, content text, similarity double precision)
+language sql
+stable
+set search_path = public, extensions
+as $$
+  select c.id, c.material_id, c.course_id, c.page, c.content,
+         1 - (c.embedding <=> query_embedding) as similarity
+  from public.material_chunks c
+  where course_ids is null or c.course_id = any(course_ids)
+  order by c.embedding <=> query_embedding
+  limit least(greatest(match_count, 1), 50);
+$$;
+revoke execute on function public.match_material_chunks(extensions.vector, uuid[], int) from public, anon, authenticated;
+grant execute on function public.match_material_chunks(extensions.vector, uuid[], int) to service_role;
+
 -- =========================================================== lock-down
 
 do $$
@@ -171,7 +220,7 @@ declare
 begin
   foreach t in array array[
     'profiles', 'courses', 'course_faculty', 'enrollments', 'materials',
-    'assignments', 'submissions', 'announcements', 'audit_logs'
+    'assignments', 'submissions', 'announcements', 'audit_logs', 'material_chunks'
   ] loop
     execute format('alter table public.%I enable row level security', t);
     execute format('revoke all on table public.%I from anon, authenticated', t);
@@ -182,7 +231,7 @@ begin
     select policyname, tablename from pg_policies
     where schemaname = 'public'
       and tablename in ('profiles', 'courses', 'course_faculty', 'enrollments', 'materials',
-                        'assignments', 'submissions', 'announcements', 'audit_logs')
+                        'assignments', 'submissions', 'announcements', 'audit_logs', 'material_chunks')
   loop
     execute format('drop policy %I on public.%I', p.policyname, p.tablename);
   end loop;

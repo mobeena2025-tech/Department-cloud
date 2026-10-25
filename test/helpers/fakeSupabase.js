@@ -63,6 +63,22 @@ class FakeQuery {
 }
 
 supabase.from = (table) => new FakeQuery(table);
+
+// pgvector search stand-in: cosine similarity over stored passages, limited
+// to the given courses (null = all), like public.match_material_chunks.
+supabase.rpc = async (fn, args) => {
+  if (fn !== 'match_material_chunks') return { data: null, error: { message: `unknown function ${fn}` } };
+  const dot = (a, b) => a.reduce((s, x, i) => s + x * b[i], 0);
+  const rows = (db.tables.material_chunks || [])
+    .filter((c) => args.course_ids === null || args.course_ids.includes(c.course_id))
+    .map((c) => ({
+      id: c.id, material_id: c.material_id, course_id: c.course_id, page: c.page, content: c.content,
+      similarity: dot(c.embedding, args.query_embedding),
+    }))
+    .sort((a, b) => b.similarity - a.similarity)
+    .slice(0, args.match_count);
+  return { data: rows, error: null };
+};
 supabase.auth.getUser = async (token) =>
   db.tokens[token]
     ? { data: { user: { id: db.tokens[token] } }, error: null }
@@ -152,7 +168,59 @@ export function resetDb() {
     ],
     assignments: [],
     audit_logs: [],
+    material_chunks: [],
   };
+}
+
+// A real (tiny) PDF with one text line per page, for PDF-reading tests.
+export function makePdf(pageTexts) {
+  const objs = ['<< /Type /Catalog /Pages 2 0 R >>', null];
+  const kids = [];
+  const fontId = 3;
+  objs.push('<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>');
+  for (const text of pageTexts) {
+    // Wrap at ~70 characters so every line stays inside the page.
+    const lines = (text.replace(/[()\\]/g, '').match(/.{1,70}(\s|$)/g) || []).map((l) => l.trim());
+    const stream = lines.length
+      ? `BT /F1 11 Tf 40 780 Td ${lines.map((l, i) => `${i ? '0 -14 Td ' : ''}(${l} ) Tj`).join(' ')} ET`
+      : '';
+    objs.push(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
+    const contentId = objs.length;
+    objs.push(`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents ${contentId} 0 R /Resources << /Font << /F1 ${fontId} 0 R >> >> >>`);
+    kids.push(`${objs.length} 0 R`);
+  }
+  objs[1] = `<< /Type /Pages /Kids [${kids.join(' ')}] /Count ${kids.length} >>`;
+  let pdf = '%PDF-1.4\n';
+  const offsets = [];
+  objs.forEach((o, i) => {
+    offsets.push(pdf.length);
+    pdf += `${i + 1} 0 obj\n${o}\nendobj\n`;
+  });
+  const xref = pdf.length;
+  pdf += `xref\n0 ${objs.length + 1}\n0000000000 65535 f \n`;
+  pdf += offsets.map((o) => `${String(o).padStart(10, '0')} 00000 n \n`).join('');
+  pdf += `trailer\n<< /Size ${objs.length + 1} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+  return Buffer.from(pdf, 'latin1');
+}
+
+// Stand-in for the embedding model: hashed bag of words, normalised.
+// Texts sharing words get high similarity, like a (very) simple model.
+export function fakeEmbed(texts) {
+  return texts.map((t) => {
+    const v = new Array(384).fill(0);
+    const words = t
+      .toLowerCase()
+      .replace(/^represent this sentence for searching relevant passages: /, '')
+      .match(/[a-z0-9]+/g) || [];
+    for (const w of words) {
+      if (w.length < 3) continue;
+      let h = 0;
+      for (const ch of w) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+      v[h % 384] += 1;
+    }
+    const norm = Math.sqrt(v.reduce((s, x) => s + x * x, 0)) || 1;
+    return v.map((x) => x / norm);
+  });
 }
 
 // ---------------------------------------------------------------- HTTP
