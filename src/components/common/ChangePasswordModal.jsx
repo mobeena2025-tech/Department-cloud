@@ -5,17 +5,21 @@ import { useAuth } from '../../context/AuthContext';
 import { useNotification } from '../../context/NotificationContext';
 
 // Same rules as the server (server/lib/password.js); the server has the final say.
-function checkNewPassword(pw, email) {
+function checkNewPassword(pw, email, rollNo) {
   if (pw.length < 8) return 'At least 8 characters';
   if (pw.length > 72) return 'At most 72 characters';
   if (!/[A-Za-z]/.test(pw) || !/\d/.test(pw)) return 'Use at least one letter and one number';
   const local = String(email || '').split('@')[0].toLowerCase();
   if (local.length >= 4 && pw.toLowerCase().includes(local)) return 'Must not contain your email name';
+  const roll = String(rollNo || '').replace(/[^0-9A-Za-z]/g, '').toLowerCase();
+  if (roll && pw.replace(/[^0-9A-Za-z]/g, '').toLowerCase().includes(roll)) return 'Must not contain your roll number';
   return null;
 }
 
-export default function ChangePasswordModal({ isOpen, onClose }) {
-  const { currentUser, updateCurrentUser } = useAuth();
+// required: first sign-in with a temporary password; the window can't be closed
+// (only Sign Out) until a new password is saved.
+export default function ChangePasswordModal({ isOpen, onClose, required = false }) {
+  const { currentUser, updateCurrentUser, logout } = useAuth();
   const { addToast } = useNotification();
   const [current, setCurrent] = useState('');
   const [next, setNext] = useState('');
@@ -31,16 +35,16 @@ export default function ChangePasswordModal({ isOpen, onClose }) {
     setNext('');
     setConfirm('');
     setError('');
-    onClose();
+    onClose?.();
   };
 
-  const rule = next ? checkNewPassword(next, currentUser?.email) : null;
+  const rule = next ? checkNewPassword(next, currentUser?.email, currentUser?.rollNo) : null;
   const mismatch = confirm && next !== confirm;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
-    const problem = checkNewPassword(next, currentUser?.email);
+    const problem = checkNewPassword(next, currentUser?.email, currentUser?.rollNo);
     if (problem) return setError(problem);
     if (next !== confirm) return setError('The new passwords do not match');
     if (next === current) return setError('Choose a password different from the current one');
@@ -84,15 +88,19 @@ export default function ChangePasswordModal({ isOpen, onClose }) {
             </div>
             <h3 className="text-sm font-bold text-cloud-900">Change Password</h3>
           </div>
-          <button onClick={close} className="text-cloud-400 hover:text-cloud-600 p-1 rounded-lg cursor-pointer">
-            <X className="w-5 h-5" />
-          </button>
+          {!required && (
+            <button onClick={close} className="text-cloud-400 hover:text-cloud-600 p-1 rounded-lg cursor-pointer">
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs">
           {currentUser?.mustChangePassword && (
             <p className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900">
-              You are using a temporary password. Choose your own to keep your account safe.
+              {required
+                ? `Welcome, ${currentUser?.name?.split(' ')[0] || ''}! You signed in with a first-time password. Choose your own password to continue.`
+                : 'You are using a temporary password. Choose your own to keep your account safe.'}
             </p>
           )}
           {input('Current password', current, setCurrent, 'current-password')}
@@ -116,10 +124,10 @@ export default function ChangePasswordModal({ isOpen, onClose }) {
           <div className="pt-3 border-t border-cloud-200 flex items-center justify-end gap-2">
             <button
               type="button"
-              onClick={close}
+              onClick={required ? logout : close}
               className="px-4 py-2 rounded-xl border border-cloud-200 text-cloud-700 hover:bg-cloud-100 font-medium cursor-pointer"
             >
-              Cancel
+              {required ? 'Sign Out' : 'Cancel'}
             </button>
             <button
               type="submit"

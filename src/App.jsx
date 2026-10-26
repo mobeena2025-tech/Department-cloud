@@ -5,6 +5,7 @@ import AccessBoundary from './components/common/AccessBoundary';
 
 // Pages
 import Login from './pages/Login';
+import ChangePasswordModal from './components/common/ChangePasswordModal';
 import AcademicAssistant from './pages/assistant/AcademicAssistant';
 
 // Student Pages
@@ -68,6 +69,16 @@ export default function App() {
           else if (user.role === 'admin') navigate('/admin');
         }}
       />
+    );
+  }
+
+  // First sign-in with a temporary password (e.g. the roll number): nothing
+  // else is shown until the user picks their own password.
+  if (currentUser.mustChangePassword) {
+    return (
+      <div className="min-h-screen bg-cloud-100">
+        <ChangePasswordModal isOpen required />
+      </div>
     );
   }
 

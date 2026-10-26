@@ -247,8 +247,15 @@ Correct sign-ins never count.
 - **Change password:** anyone signed in opens the menu at the top right and chooses
   **Change Password** (current password, then a new one: 8+ characters with a letter
   and a number). Their other devices are signed out.
-- **Temporary passwords:** accounts made by the admin or the importer, and accounts
-  that were reset, show a yellow reminder until the person picks their own password.
+- **First-time passwords:** accounts made by the admin or the importer, and accounts
+  that were reset, must choose their own password at their first sign-in; until they
+  do, the site shows only the Change Password window and the API refuses everything
+  else.
+- **Roll-number passwords for students:** `npm run roll-passwords` (add `--dry-run`
+  to check first) sets each student's first-time password to their roll number
+  without hyphens (`1601-23-748-001` becomes `160123748001`). Students who already
+  chose their own password are skipped. A new password may not contain the roll
+  number. Roll numbers are not secret, so ask everyone to sign in and change it soon.
 - **Forgot password:** there is no email reset. The admin opens **Users & Roles** and
   clicks **Reset password** next to the person. The new temporary password is shown
   once; send it to them privately. Resets are recorded in the audit log (without the

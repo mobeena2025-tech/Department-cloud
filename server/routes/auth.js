@@ -83,7 +83,7 @@ router.get('/me', requireAuth, (req, res) => {
 router.post('/change-password', requireAuth, asyncHandler(async (req, res) => {
   const currentPassword = requiredString(req.body?.currentPassword, 'currentPassword', { max: 200 });
   const newPassword = String(req.body?.newPassword ?? '');
-  validateNewPassword(newPassword, { email: req.user.email });
+  validateNewPassword(newPassword, { email: req.user.email, rollNo: req.user.rollNo });
   if (newPassword === currentPassword) throw new HttpError(400, 'New password must be different from the current one');
 
   // Same guessing protection as sign-in.

@@ -1,7 +1,7 @@
 import { test, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { db, ids, tokens, resetDb, startServer, stopServer, request } from './helpers/fakeSupabase.js';
-import { validateNewPassword, generateTemporaryPassword } from '../server/lib/password.js';
+import { validateNewPassword, generateTemporaryPassword, rollNumberPassword } from '../server/lib/password.js';
 
 before(startServer);
 after(stopServer);
@@ -108,4 +108,47 @@ test('password rules and generator', () => {
     assert.match(p, /\d/);
     assert.doesNotMatch(p, /[0O1lI]/);
   }
+});
+
+// First-time (roll number) passwords: the account can do nothing else until
+// the password is changed.
+function giveRollNumberPassword() {
+  const p = db.tables.profiles.find((r) => r.id === ids.studentIn);
+  p.roll_number = '1601-23-748-001';
+  db.authUsers[ids.studentIn].password = rollNumberPassword(p.roll_number);
+  db.authUsers[ids.studentIn].app_metadata = { must_change_password: true };
+}
+
+test('roll number without hyphens is the first-time password', () => {
+  assert.equal(rollNumberPassword('1601-23-748-001'), '160123748001');
+  assert.equal(rollNumberPassword(null), '');
+});
+
+test('a first-time password blocks everything except "me" and changing the password', async () => {
+  giveRollNumberPassword();
+  const signedIn = await login('studentin@test.local', '160123748001');
+  assert.equal(signedIn.status, 200);
+  assert.equal(signedIn.body.user.mustChangePassword, true);
+  const tok = signedIn.body.session.accessToken;
+
+  for (const path of ['/courses', '/materials', '/announcements', '/assignments']) {
+    const res = await request('GET', path, { token: tok });
+    assert.equal(res.status, 403, path);
+    assert.match(res.body.message, /change your temporary password/);
+  }
+  assert.equal((await request('GET', '/auth/me', { token: tok })).status, 200);
+
+  const changed = await change(tok, '160123748001', 'MyOwnPass789');
+  assert.equal(changed.status, 200);
+  const fresh = changed.body.session.accessToken;
+  assert.equal((await request('GET', '/courses', { token: fresh })).status, 200);
+});
+
+test('the new password may not contain the roll number', async () => {
+  giveRollNumberPassword();
+  const tok = (await login('studentin@test.local', '160123748001')).body.session.accessToken;
+  const res = await change(tok, '160123748001', 'x160123748001');
+  assert.equal(res.status, 400);
+  assert.match(res.body.message, /roll number/);
+  assert.throws(() => validateNewPassword('ab1601-23-748-001', { rollNo: '1601-23-748-001' }), /roll number/);
 });

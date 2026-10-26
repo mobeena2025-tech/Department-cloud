@@ -79,6 +79,16 @@ export async function requireAuth(req, res, next) {
   }
 }
 
+// Accounts on a first-time / temporary password (e.g. the roll number) must
+// choose their own before using anything else. /api/auth/me and
+// /api/auth/change-password are mounted before this and stay reachable.
+export function requirePasswordChanged(req, res, next) {
+  if (req.user?.mustChangePassword) {
+    return next(new HttpError(403, 'Please change your temporary password first'));
+  }
+  next();
+}
+
 // Allow only the listed roles, e.g. requireRole('faculty', 'admin').
 export function requireRole(...roles) {
   return (req, res, next) => {

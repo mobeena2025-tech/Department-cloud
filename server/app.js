@@ -14,7 +14,7 @@ import aiSearchRoutes from './routes/aiSearch.js';
 import auditLogRoutes from './routes/auditLogs.js';
 import analyticsRoutes from './routes/analytics.js';
 import userRoutes from './routes/users.js';
-import { requireAuth } from './lib/auth.js';
+import { requireAuth, requirePasswordChanged } from './lib/auth.js';
 
 const app = express();
 const isProduction = process.env.NODE_ENV === 'production';
@@ -70,6 +70,7 @@ app.use('/api/auth', authRoutes);
 
 // ---- Everything below needs a valid Supabase access token ----
 app.use('/api', requireAuth);
+app.use('/api', requirePasswordChanged);
 
 app.use('/api/courses', courseRoutes);
 app.use('/api/materials', materialRoutes);

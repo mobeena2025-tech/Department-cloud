@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import { HttpError } from './validate.js';
 
 /** Throws HttpError(400) if `password` is not acceptable as a new password. */
-export function validateNewPassword(password, { email = '' } = {}) {
+export function validateNewPassword(password, { email = '', rollNo = '' } = {}) {
   if (typeof password !== 'string' || password.length < 8) {
     throw new HttpError(400, 'New password must be at least 8 characters');
   }
@@ -14,7 +14,16 @@ export function validateNewPassword(password, { email = '' } = {}) {
   if (local.length >= 4 && password.toLowerCase().includes(local)) {
     throw new HttpError(400, 'New password must not contain your email name');
   }
+  const roll = rollNumberPassword(rollNo);
+  if (roll && password.replace(/[^0-9A-Za-z]/g, '').toLowerCase().includes(roll.toLowerCase())) {
+    throw new HttpError(400, 'New password must not contain your roll number');
+  }
   return password;
+}
+
+/** First-time password for a student: the roll number without hyphens/spaces. */
+export function rollNumberPassword(rollNo) {
+  return String(rollNo || '').replace(/[^0-9A-Za-z]/g, '');
 }
 
 /** Easy-to-read random password (no 0/O/1/l/I), always with letters and digits. */
