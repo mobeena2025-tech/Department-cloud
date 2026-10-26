@@ -1,4 +1,5 @@
 import { DEPARTMENT } from './department.js';
+import { syllabusFor, periodKind, periodsFor, periodLabel, materialUnitFromRow } from './syllabus.js';
 // Convert database rows (snake_case) into the JSON shapes the frontend uses
 // (camelCase). Keep every response shape in this one file.
 
@@ -20,7 +21,7 @@ export const ASSIGNMENT_SELECT = `
 `;
 
 export function toMaterialResponse(m) {
-  const unitNumber = Number(m.unit) || 1;
+  const unitNumber = materialUnitFromRow(m.unit); // null = "Other"
   return {
     id: m.id,
     courseId: m.course_id,
@@ -31,7 +32,7 @@ export function toMaterialResponse(m) {
     title: m.title,
     description: m.description,
     unitNumber,
-    unitTitle: `Unit ${unitNumber}`,
+    unitTitle: periodLabel(m.courses?.code, unitNumber), // "Unit 3", "Week 3" or "Other"
     topic: m.topic,
 
     fileType: m.file_type || 'PDF',
@@ -63,7 +64,8 @@ export function toAssignmentResponse(a, { enrolled = 0, submitted = 0 } = {}) {
 
     title: a.title,
     description: a.description,
-    unitNumber: a.unit_number,
+    unitNumber: a.unit_number ?? null, // null = "Other"
+    unitTitle: periodLabel(a.courses?.code, a.unit_number),
     assignedDate: a.assigned_date,
     dueDate: a.due_date,
     maxMarks: a.max_marks,
@@ -83,12 +85,14 @@ export function toAssignmentResponse(a, { enrolled = 0, submitted = 0 } = {}) {
   };
 }
 
-// Units are derived from the unit numbers actually used by materials and
-// assignments; there is no separate syllabus table.
-function unitsFrom(unitNumbers) {
-  return [...new Set(unitNumbers.filter((n) => Number.isInteger(n) && n > 0))]
-    .sort((a, b) => a - b)
-    .map((n) => ({ unitNumber: n, title: '', description: '' }));
+// Units/weeks that have content, in order, named from the syllabus;
+// content filed under "Other" comes last (unitNumber null).
+function unitsFrom(code, unitNumbers) {
+  const names = Object.fromEntries(periodsFor(code).map((p) => [p.number, p.title]));
+  const numbers = [...new Set(unitNumbers.filter((n) => Number.isInteger(n) && n > 0))].sort((a, b) => a - b);
+  const units = numbers.map((n) => ({ unitNumber: n, label: periodLabel(code, n), title: names[n] || '', description: '' }));
+  if (unitNumbers.some((n) => n === null)) units.push({ unitNumber: null, label: 'Other', title: '', description: '' });
+  return units;
 }
 
 /**
@@ -106,7 +110,7 @@ export function toCourseResponse(
     title: c.name,
     semester: c.semester,
     section: c.section,
-    credits: c.credits,
+    credits: c.credits === null || c.credits === undefined ? null : Number(c.credits),
     department: c.department || null,
     description: c.description || null,
 
@@ -115,7 +119,10 @@ export function toCourseResponse(
 
     materialsCount: materials.length,
     activeAssignmentsCount: assignments.filter((a) => a.status === 'Active').length,
-    units: unitsFrom([
+    periodType: periodKind(c.code), // 'unit' (theory) or 'week' (labs, mini project)
+    periods: periodsFor(c.code), // choices for upload / assignment forms
+    officialCode: syllabusFor(c.code)?.officialCode || null,
+    units: unitsFrom(c.code, [
       ...materials.map((m) => m.unitNumber),
       ...assignments.map((a) => a.unitNumber),
     ]),
@@ -125,6 +132,7 @@ export function toCourseResponse(
     course.materials = materials;
     course.assignments = assignments;
     course.announcements = announcements;
+    course.syllabus = syllabusFor(c.code);
   }
   return course;
 }

@@ -5,7 +5,7 @@ import supabase from '../supabase.js';
 import { indexMaterial } from '../rag/indexer.js';
 
 const all = process.argv.includes('--all');
-let query = supabase.from('materials').select('id, title, index_status').not('storage_path', 'is', null);
+let query = supabase.from('materials').select('id, title, index_status').not('storage_path', 'is', null).or('file_type.is.null,file_type.eq.PDF'); // only PDFs can be read
 if (!all) query = query.in('index_status', ['pending', 'indexing', 'failed']);
 
 const { data, error } = await query;

@@ -47,7 +47,7 @@ create table if not exists public.courses (
   name        text not null,
   semester    int  not null check (semester between 1 and 8),
   section     text not null default 'A',
-  credits     int  not null default 3,
+  credits     numeric(3,1) not null default 3, -- labs are 1.5
   description text,
   department  text default 'AI & DS',
   created_at  timestamptz not null default now()
@@ -201,11 +201,17 @@ language sql
 stable
 set search_path = public, extensions
 as $$
-  select c.id, c.material_id, c.course_id, c.page, c.content,
-         1 - (c.embedding <=> query_embedding) as similarity
-  from public.material_chunks c
-  where course_ids is null or c.course_id = any(course_ids)
-  order by c.embedding <=> query_embedding
+  -- Exact search within the user's courses (see migration 009: the HNSW
+  -- index filters by course only after picking ~40 passages overall).
+  with candidates as materialized (
+    select c.id, c.material_id, c.course_id, c.page, c.content,
+           c.embedding <=> query_embedding as distance
+    from public.material_chunks c
+    where course_ids is null or c.course_id = any(course_ids)
+  )
+  select id, material_id, course_id, page, content, 1 - distance as similarity
+  from candidates
+  order by distance
   limit least(greatest(match_count, 1), 50);
 $$;
 revoke execute on function public.match_material_chunks(extensions.vector, uuid[], int) from public, anon, authenticated;
@@ -239,9 +245,16 @@ end $$;
 
 -- =========================================================== storage
 
--- Private bucket, PDF only, 10 MB per file.
+-- Private bucket: PDF, PowerPoint and Word, 20 MB per file.
+-- (Student submissions are still PDF-only; the API checks that.)
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-values ('academic-materials', 'academic-materials', false, 10485760, array['application/pdf'])
+values ('academic-materials', 'academic-materials', false, 20971520, array[
+  'application/pdf',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  'application/vnd.ms-powerpoint',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/msword'
+])
 on conflict (id) do update
   set public = false,
       file_size_limit = excluded.file_size_limit,

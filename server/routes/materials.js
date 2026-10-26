@@ -1,4 +1,5 @@
 import express from 'express';
+import { parsePeriod, periodLabel, OTHER } from '../lib/syllabus.js';
 import supabase from '../supabase.js';
 import { findCourse, isUuid } from '../lib/courseLookup.js';
 import { requireRole } from '../lib/auth.js';
@@ -8,8 +9,8 @@ import { visibleCourseIds, assertCanViewCourse, assertCanManageCourse } from '..
 import {
   BUCKET,
   SIGNED_URL_SECONDS,
-  uploadSinglePdf,
-  hasPdfSignature,
+  uploadSingleMaterial,
+  materialTypeOf,
   safeFileName,
 } from '../lib/pdfUpload.js';
 import {
@@ -37,7 +38,7 @@ function requireMaterialId(id) {
 router.get('/', asyncHandler(async (req, res) => {
   const courseId = optionalString(req.query.courseId, 'courseId', { max: 40 });
   const semester = optionalInt(req.query.semester, 'semester', { min: 1, max: 8 });
-  const unitNumber = optionalInt(req.query.unitNumber, 'unitNumber', { min: 1, max: 10 });
+  const unitNumber = parsePeriod(req.query.unitNumber);
   const fileType = optionalString(req.query.fileType, 'fileType', { max: 20 });
   const query = optionalString(req.query.query, 'query', { max: 100 });
 
@@ -111,7 +112,14 @@ router.get('/:id', asyncHandler(async (req, res) => {
   if (data.storage_path) {
     const { data: signedData, error: signedError } = await supabase.storage
       .from(BUCKET)
-      .createSignedUrl(data.storage_path, SIGNED_URL_SECONDS);
+      .createSignedUrl(
+        data.storage_path,
+        SIGNED_URL_SECONDS,
+        // PowerPoint/Word can't be shown in the browser: download them under their title.
+        (data.file_type || 'PDF') === 'PDF'
+          ? undefined
+          : { download: `${safeFileName(data.title)}.${data.storage_path.split('.').pop()}` }
+      );
 
     if (signedError) {
       console.error('Signed URL error:', signedError.message);
@@ -129,20 +137,23 @@ router.get('/:id', asyncHandler(async (req, res) => {
 }));
 
 // Upload Material endpoint (Faculty/Admin)
-router.post('/', requireRole('faculty', 'admin'), uploadSinglePdf, asyncHandler(async (req, res) => {
-  if (!req.file) throw new HttpError(400, 'PDF file is required');
+router.post('/', requireRole('faculty', 'admin'), uploadSingleMaterial, asyncHandler(async (req, res) => {
+  if (!req.file) throw new HttpError(400, 'A file is required');
 
-  if (!hasPdfSignature(req.file.buffer)) {
-    throw new HttpError(400, 'File is not a valid PDF');
+  // The name says .pdf/.pptx/...; check the contents really are that kind of file.
+  const fileType = materialTypeOf(req.file);
+  if (!fileType) {
+    throw new HttpError(400, 'File is not a valid PDF, PowerPoint or Word document');
   }
+  const isPdf = fileType.label === 'PDF';
 
   const body = req.body || {};
   const title = requiredString(body.title, 'Title', { max: 200 });
   const courseId = requiredString(body.courseId, 'Course', { max: 40 });
-  const unitNum = optionalInt(body.unitNumber, 'Unit number', { min: 1, max: 10 }) ?? 1;
+  const parsedUnit = parsePeriod(body.unitNumber, 'Unit number');
+  const unitNum = parsedUnit === undefined ? 1 : parsedUnit; // null = "Other"
   const topic = optionalString(body.topic, 'Topic', { max: 300 }) ?? null;
   const summary = optionalString(body.summary, 'Summary', { max: 2000 }) ?? null;
-  const materialType = optionalString(body.materialType, 'Material type', { max: 50 }) ?? 'PDF';
 
   // 1. Look up the course BEFORE touching Storage, so a bad course id
   //    never leaves an orphaned file behind.
@@ -156,10 +167,10 @@ router.post('/', requireRole('faculty', 'admin'), uploadSinglePdf, asyncHandler(
 
   const { error: storageError } = await supabase.storage
     .from(BUCKET)
-    .upload(storagePath, req.file.buffer, { contentType: 'application/pdf', upsert: false });
+    .upload(storagePath, req.file.buffer, { contentType: fileType.mime, upsert: false });
   if (storageError) {
     console.error('Supabase Storage error:', storageError.message);
-    throw new HttpError(500, 'Failed to upload PDF to storage');
+    throw new HttpError(500, 'Failed to upload the file to storage');
   }
 
   // 3. Save the row. Store the storage path, never a URL.
@@ -170,9 +181,11 @@ router.post('/', requireRole('faculty', 'admin'), uploadSinglePdf, asyncHandler(
       course_id: course.id,
       title,
       description: summary,
-      unit: String(unitNum),
+      unit: unitNum === null ? OTHER : String(unitNum),
       topic,
-      file_type: 'PDF',
+      file_type: fileType.label,
+      // Only PDFs can be read by the assistant; other files are download-only.
+      index_status: isPdf ? 'pending' : 'no_text',
       storage_path: storagePath,
       file_size: req.file.size,
       uploaded_by: uploadedBy,
@@ -189,14 +202,14 @@ router.post('/', requireRole('faculty', 'admin'), uploadSinglePdf, asyncHandler(
   recordAuditLog(req, {
     action: 'UPLOAD_MATERIAL',
     courseId: course.id,
-    resource: `${inserted.title} (${course.code} - Unit ${unitNum})`,
+    resource: `${inserted.title} (${course.code} - ${periodLabel(course.code, unitNum)})`,
     status: 'SUCCESS',
     severity: 'INFO',
-    details: `Uploaded ${formatFileSize(req.file.size)} ${materialType} to ${storagePath}.`,
+    details: `Uploaded ${formatFileSize(req.file.size)} ${fileType.label} to ${storagePath}.`,
   });
 
-  // Make the PDF searchable for the assistant, in the background.
-  enqueueIndex(inserted.id, req.file.buffer);
+  // Make a PDF searchable for the assistant, in the background.
+  if (isPdf) enqueueIndex(inserted.id, req.file.buffer);
 
   res.status(201).json({
     success: true,
@@ -209,10 +222,13 @@ router.post('/', requireRole('faculty', 'admin'), uploadSinglePdf, asyncHandler(
 router.post('/:id/reindex', requireRole('faculty', 'admin'), asyncHandler(async (req, res) => {
   const id = requireMaterialId(req.params.id);
   const { data: existing, error } = await supabase
-    .from('materials').select('id, course_id').eq('id', id).maybeSingle();
+    .from('materials').select('id, course_id, file_type').eq('id', id).maybeSingle();
   if (error) throw dbError('Material lookup error', error);
   if (!existing) throw new HttpError(404, 'Material not found');
   await assertCanManageCourse(req.user, existing.course_id);
+  if ((existing.file_type || 'PDF') !== 'PDF') {
+    throw new HttpError(400, 'Only PDFs can be read by the Academic Assistant');
+  }
   enqueueIndex(id);
   res.status(202).json({ success: true, message: 'Indexing started' });
 }));
@@ -234,7 +250,8 @@ router.put('/:id', requireRole('faculty', 'admin'), asyncHandler(async (req, res
   if (body.topic !== undefined) updates.topic = optionalString(body.topic, 'topic', { max: 300 }) ?? null;
   if (body.summary !== undefined) updates.description = optionalString(body.summary, 'summary', { max: 2000 }) ?? null;
   if (body.unitNumber !== undefined) {
-    updates.unit = String(optionalInt(body.unitNumber, 'unitNumber', { min: 1, max: 10 }) ?? 1);
+    const unit = parsePeriod(body.unitNumber);
+    updates.unit = unit === null ? OTHER : String(unit ?? 1);
   }
   if (Object.keys(updates).length === 0) throw new HttpError(400, 'Nothing to update');
 

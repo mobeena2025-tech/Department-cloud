@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { courseOptions, semesterOptions } from '../../services/filterOptions';
+import { periodLabelOptions, periodChoices, periodWord, toApiPeriod } from '../../services/periods';
 import UploadMaterialModal from '../../components/faculty/UploadMaterialModal';
 import DocumentPreviewModal from '../../components/common/DocumentPreviewModal';
 import { useNotification } from '../../context/NotificationContext';
@@ -28,6 +29,7 @@ export default function FacultyMaterials({ onNavigate }) {
   const { addToast } = useNotification();
 
   const [materials, setMaterials] = useState([]);
+  const [courses, setCourses] = useState([]); // for each course's units / weeks
   const [query, setQuery] = useState('');
   const [selectedCourse, setSelectedCourse] = useState('ALL');
   const [selectedUnit, setSelectedUnit] = useState('ALL');
@@ -61,6 +63,7 @@ export default function FacultyMaterials({ onNavigate }) {
 
   useEffect(() => {
     loadMaterials();
+    api.getCourses().then((res) => setCourses(res?.courses || [])).catch(() => {});
   }, []);
 
   const openEditModal = (mat) => {
@@ -68,10 +71,12 @@ export default function FacultyMaterials({ onNavigate }) {
     setEditForm({
       title: mat.title || '',
       topic: mat.topic || '',
-      unitNumber: mat.unitNumber || 1,
+      unitNumber: mat.unitNumber === null ? 'other' : String(mat.unitNumber || 1),
       summary: mat.summary || '',
     });
   };
+
+  const editCourse = courses.find((c) => c.id === editingMaterial?.courseId);
 
   const handleSaveEdit = async (e) => {
     e.preventDefault();
@@ -82,7 +87,7 @@ export default function FacultyMaterials({ onNavigate }) {
         title: editForm.title,
         topic: editForm.topic,
         summary: editForm.summary,
-        unitNumber: Number(editForm.unitNumber),
+        unitNumber: toApiPeriod(editForm.unitNumber),
       };
 
       const res = await api.updateMaterial(editingMaterial.id, payload);
@@ -119,7 +124,7 @@ export default function FacultyMaterials({ onNavigate }) {
 
   const filtered = materials.filter((m) => {
     if (selectedCourse !== 'ALL' && m.courseId !== selectedCourse) return false;
-    if (selectedUnit !== 'ALL' && m.unitNumber !== Number(selectedUnit)) return false;
+    if (selectedUnit !== 'ALL' && m.unitTitle !== selectedUnit) return false;
     if (selectedSemester !== 'ALL' && m.semester !== Number(selectedSemester)) return false;
     if (selectedType !== 'ALL' && m.materialType?.toLowerCase() !== selectedType.toLowerCase()) return false;
     if (query.trim()) {
@@ -194,18 +199,16 @@ export default function FacultyMaterials({ onNavigate }) {
 
           {/* Unit */}
           <div>
-            <label className="text-[10px] uppercase font-bold text-cloud-400 block mb-1">Curriculum Unit</label>
+            <label className="text-[10px] uppercase font-bold text-cloud-400 block mb-1">Unit / Week</label>
             <select
               value={selectedUnit}
               onChange={(e) => setSelectedUnit(e.target.value)}
               className="w-full px-2.5 py-1.5 rounded-lg border border-cloud-200 text-xs text-cloud-700 bg-white"
             >
-              <option value="ALL">All Units</option>
-              <option value="1">Unit 1</option>
-              <option value="2">Unit 2</option>
-              <option value="3">Unit 3</option>
-              <option value="4">Unit 4</option>
-              <option value="5">Unit 5</option>
+              <option value="ALL">All Units &amp; Weeks</option>
+              {periodLabelOptions(materials).map((l) => (
+                <option key={l} value={l}>{l}</option>
+              ))}
             </select>
           </div>
 
@@ -291,7 +294,7 @@ export default function FacultyMaterials({ onNavigate }) {
                       <span className="text-brand-600 font-medium">{mat.storagePath}</span>
                       <span>&bull;</span>
                       <span>{mat.size}</span>
-                      {mat.indexStatus && (
+                      {mat.indexStatus && mat.fileType === 'PDF' && (
                         <>
                           <span>&bull;</span>
                           <span
@@ -386,17 +389,15 @@ export default function FacultyMaterials({ onNavigate }) {
 
               <div>
                 <div>
-                  <label className="font-semibold text-cloud-700 block mb-1">Curriculum Unit</label>
+                  <label className="font-semibold text-cloud-700 block mb-1">{periodWord(editCourse)}</label>
                   <select
                     value={editForm.unitNumber}
-                    onChange={(e) => setEditForm({ ...editForm, unitNumber: Number(e.target.value) })}
+                    onChange={(e) => setEditForm({ ...editForm, unitNumber: e.target.value })}
                     className="w-full px-2.5 py-1.5 rounded-lg border border-cloud-200 text-cloud-900 bg-white"
                   >
-                    <option value={1}>Unit 1</option>
-                    <option value={2}>Unit 2</option>
-                    <option value={3}>Unit 3</option>
-                    <option value={4}>Unit 4</option>
-                    <option value={5}>Unit 5</option>
+                    {periodChoices(editCourse).map((p) => (
+                      <option key={p.value} value={p.value}>{p.label}</option>
+                    ))}
                   </select>
                 </div>
               </div>

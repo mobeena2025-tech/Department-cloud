@@ -80,7 +80,7 @@ export default function StudentCourses({ onNavigate }) {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-cloud-400">Syllabus Breakdown:</span>
-                  <span className="font-medium text-cloud-900">{c.units.length} Units &bull; {c.materialsCount} Documents</span>
+                  <span className="font-medium text-cloud-900">{c.periods?.length || 5} {c.periodType === 'week' ? 'Weeks' : 'Units'} &bull; {c.materialsCount} Documents</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-cloud-400">Academic Standing:</span>

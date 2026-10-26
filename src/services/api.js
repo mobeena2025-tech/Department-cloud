@@ -67,6 +67,19 @@ export function validatePdfFile(file) {
   return null;
 }
 
+// Course materials: PDF, PowerPoint or Word, up to 20 MB (must match the server).
+export const MAX_MATERIAL_BYTES = 20 * 1024 * 1024;
+const MATERIAL_EXTENSIONS = ['pdf', 'ppt', 'pptx', 'doc', 'docx'];
+export const MATERIAL_ACCEPT = '.pdf,.ppt,.pptx,.doc,.docx';
+
+export function validateMaterialFile(file) {
+  if (!file) return 'Please choose a file.';
+  const ext = file.name.toLowerCase().split('.').pop();
+  if (!MATERIAL_EXTENSIONS.includes(ext)) return 'Only PDF, PowerPoint (.ppt/.pptx) and Word (.doc/.docx) files are allowed.';
+  if (file.size > MAX_MATERIAL_BYTES) return 'File is larger than 20 MB.';
+  return null;
+}
+
 export function formatFileSize(bytes) {
   if (typeof bytes !== 'number') return bytes || '';
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;

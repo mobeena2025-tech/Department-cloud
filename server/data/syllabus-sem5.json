@@ -1,0 +1,533 @@
+{
+  "AAN": {
+    "officialCode": "22ADC51N",
+    "kind": "theory",
+    "credits": 3,
+    "outcomes": [
+      "Understand the basic principles and evolution of deep learning and tools like TensorFlow/Keras.",
+      "Construct and train deep neural networks using backpropagation and various activation functions.",
+      "Evaluate the effectiveness of different optimization algorithms and regularization techniques.",
+      "Design and implement convolutional neural networks for image-related applications.",
+      "Apply sequence models and autoencoders for sequence modeling tasks."
+    ],
+    "units": [
+      {
+        "number": 1,
+        "title": "Introduction to Deep Learning",
+        "topics": "What is Deep Learning, History and evolution of neural networks, Deep Learning vs. Machine Learning, Applications (Vision, NLP, Robotics, etc.), Tools: TensorFlow, PyTorch, Keras"
+      },
+      {
+        "number": 2,
+        "title": "Deep Neural Networks Fundamentals",
+        "topics": "Perceptron, Sigmoid Neuron, Example: Learning XOR, MLP Architecture, Back propagation with gradient descent, Loss Functions, Output Units- Sigmoid, Softmax, Hidden Units- Activation functions- Sigmoid, Tanh, Rectified Linear Unit(Relu), Leaky Relu, Vanishing Gradient in MLP,"
+      },
+      {
+        "number": 3,
+        "title": "Optimization Algorithms",
+        "topics": "Challenges in Neural Network Optimization, Stochastic Gradient Descent, Momentum, Nesterov Momentum Algorithms with Adaptive Learning Rates: AdaGrad, RMSProp, Adam, Choosing the Right Optimization Algorithm, Overfitting: Parameter Norm Penalties, L2 Parameter Regularization, L1 Regularization, Dataset Augmentation, Noise Robustness, Injecting Noise at the Output Targets, Early Stopping Parameter Tying and Parameter Sharing, Dropout, Batch Normalization, Parameter Initialization Strategies, Hyperparameter Tuning: Manual Hyperparameter Tuning, Automatic Hyperparameter Optimization Algorithms"
+      },
+      {
+        "number": 4,
+        "title": "Convolution Neural Networks",
+        "topics": "The Convolution Operation, Motivation, Pooling, Convolution and Pooling as an Infinitely Strong Prior, Variants of the Basic Convolution Function, Structures outputs, Datatypes, Pretrained Models: Alex Net, VGG, Googlenet, Resnet, Visualization in CNN"
+      },
+      {
+        "number": 5,
+        "title": "Sequence Models",
+        "topics": "Recurrent Neural Networks, Teacher Forcing and Networks with Output Recurrence, Computing the Gradient, Modeling Sequences Conditioned on Context, Bidirectional RNNs, Deep Recurrent Networks, The Challenge of Long-Term Dependencies, The Long Short-Term Memory and Other Gated RNNs, Optimization for Long-Term Dependencies, Encoder-Decoder models with attention, Autoencoder: Denoising Autoencoders, Sparse Autoencoders, Contractive Autoencoders, GAN Modelling"
+      }
+    ],
+    "textbooks": [
+      "Ian Goodfellow, Yoshua Bengio, and Aaron Courville, Deep Learning, MIT Press, 2016.",
+      "Zhang, A., Lipton, Z. C., Li, M., & Smola, A. J. (2020). Dive into Deep Learning"
+    ]
+  },
+  "IDS": {
+    "officialCode": "22ADC52N",
+    "kind": "theory",
+    "credits": 3,
+    "outcomes": [
+      "Understand and explain the fundamentals of Data Science using R, including key concepts, methodologies, and applications.",
+      "Explore and clean datasets effectively, applying appropriate techniques to prepare data for analysis.",
+      "Differentiate between supervised and unsupervised learning techniques, and apply these methods to solve real-world problems using R.",
+      "Document and deploy data science projects using R, ensuring reproducibility and clarity in the presentation of results.",
+      "Conduct text mining using R, leveraging tools and techniques to extract insights from textual data."
+    ],
+    "units": [
+      {
+        "number": 1,
+        "title": "Introduction to data science",
+        "topics": "The Data Science Process: Roles in a data science project, Stages of a data science project, Setting expectations. Starting with R and data: Starting with R,working with data from files. Exploring data: Using Summary Statistics to spot problems, Spotting problems with graphics and visualization."
+      },
+      {
+        "number": 2,
+        "title": "Managing data",
+        "topics": "cleaning data, Data transformations, Sampling for modeling and validation. Choosing and evaluating models: Mapping problems to machine learning tasks, evaluating models, Local interpretable model-agnostic explanations (LIME) for explaining model predictions."
+      },
+      {
+        "number": 3,
+        "title": "Supervised Learning",
+        "topics": "Using Linear Regression, Using Logistic Regression. Unsupervised methods: Cluster Analysis, Association rules. Exploring Advanced Methods: Using bagging and random forest, using generalized additive models, using kernel methods to increase data separation"
+      },
+      {
+        "number": 4,
+        "title": "Documentation and Deployment",
+        "topics": "Predicting buzz, Using R markdown to produce milestone documentation, Using comments and version control for running documentation, Deploying models. Text Mining with R: The tidy text format: Contrasting tidy text with other data structures, the unnest_tokens function, tidying the works of Jane Austen, Word Frequencies."
+      },
+      {
+        "number": 5,
+        "title": "Sentiment analysis with Tidy data",
+        "topics": "The sentiments datasets, Comparing the three sentiment dictionaries, Most common positive and negative words, Word clouds, Looking at units beyond just words, Analyzing word and document frequency: tf-idf, Term frequency in Jane Austen’s novels, Zipf’s law, The bind_tf_idf() function."
+      }
+    ],
+    "textbooks": [
+      "Zumel, N., Mount, J., &Porzak, J., “Practical data science with R”, 2nd edition. Shelter Island, NY: Manning, 2019.",
+      "Julia Silge and David Robinson. “Text Mining with R: A Tidy Approach”, 1st. edition. O'Reilly Media, Inc., 2017"
+    ]
+  },
+  "OS": {
+    "officialCode": "22CSC15N",
+    "kind": "theory",
+    "credits": 3,
+    "outcomes": [
+      "Understand the basics of Operating systems and its major components.",
+      "Illustrate the concepts related to process management.",
+      "Distinguish various memory management techniques.",
+      "Apply concepts of process synchronization and deadlocks to a given situation.",
+      "Evaluate various file allocation methods and security as well as recovery features in the designing Operating system."
+    ],
+    "units": [
+      {
+        "number": 1,
+        "title": "Introduction to Operating Systems",
+        "topics": "Computer System overview, Components of a computer system, functions of OS, Examples and different types of OS (RTOS vs. desktop vs. mobile etc.), OS distributions and versions. OS architectures: Micro-kernel, Layered, Kernel Approaches and examples, Linux/Unix OS Design and architecture overview."
+      },
+      {
+        "number": 2,
+        "title": "Process management",
+        "topics": "Program vs. process, process states, Process Control Block (PCB), OS services and system calls (fork, wait, exec, getpid, getppid etc.), system calls vs. System programs, Process scheduling- Process context switching, scheduling algorithms, scheduling criteria. Process management in Unix/Linux. Inter Process Communication: Linux IPC Mechanisms, RPC, RPC exception handling and Security issues."
+      },
+      {
+        "number": 3,
+        "title": "Memory Management",
+        "topics": "Memory view of a process, Process memory usage requirements, virtual and physical memory related system calls (mmap, munmap, sbrk, mprotect). Address translation mechanisms static mapping, segmentation, paging, page faults, page replacement algorithms, page sharing, read/write permissions, swapping. Memory management in Linux/Unix. Secondary Memory Management: Disk structure, disk scheduling, disk management, buffering, swap space management."
+      },
+      {
+        "number": 4,
+        "title": "Concurrency and Synchronization",
+        "topics": "Introduction to threads, benefits, types and thread APIs, Synchronization, issues, hardware and software solutions for synchronization, Classical problems of synchronization. Deadlocks: Introduction, necessary conditions for deadlock occurrence, RAG, deadlock handling mechanisms - prevention, avoidance and recovery."
+      },
+      {
+        "number": 5,
+        "title": "File Systems",
+        "topics": "File concepts, file types, allocation and organization methods, file handling system calls, File system metadata, directory structure, caching optimizations, File Systems case study. OS Security and Defence: Types of threats in OS, basic security mechanisms, malware taxonomy, viruses, worms, and rootkits, logging, auditing, and recovery."
+      }
+    ],
+    "textbooks": [
+      "Galvin, Silberschatz, “Operating system Concepts”, 10th Edition, John Wiley & Sons, 2018.",
+      "William Stallings, “Operating Systems Internals and Design Principles” Pearson Edition, 2012."
+    ]
+  },
+  "SE": {
+    "officialCode": "22CSC21N",
+    "kind": "theory",
+    "credits": 3,
+    "outcomes": [
+      "Acquire a working knowledge of software processes and models for each phase of software development.",
+      "Understand the agile Software process models and demonstrate the skills necessary to specify the requirements.",
+      "Recall the modelling concepts and estimate the cost of software using empirical models.",
+      "Enlist the design principles and construct a product using coding principles and standards.",
+      "Develop test cases and acquire skills necessary for independently developing a complete software project and estimate software quality."
+    ],
+    "units": [
+      {
+        "number": 1,
+        "title": "Introduction to Software Engineering",
+        "topics": "Software Engineering Practice, The Software Process, Software Engineering Practice Process Models: A Generic Process Model, Process assessment and Improvement, Prescriptive Process Models: Waterfall Model, Incremental Process Models, RAD Model, Evolutionary Process Models - Prototyping, The Spiral Model, Specialized Process Models."
+      },
+      {
+        "number": 2,
+        "title": "An Agile Development",
+        "topics": "Agility, Agile Process, and Agile Process Models- Extreme Programming (XP), Adaptive Software Development (ASD), Scrum, Dynamic Systems Development Method (DSDM), Feature Driven Development (FDD), Agile Modelling (AM), Requirement Engineering, Establishing the groundwork, Eliciting Requirements, Negotiating Requirements, and Validating Requirements. Software Requirements Analysis and Specification: Value of a Good SRS, Problem Analysis, Requirements Specification."
+      },
+      {
+        "number": 3,
+        "title": "Planning a software Project",
+        "topics": "Effort Estimation, Project Schedule and Staffing, Quality Planning, Risk Management, Estimation for Software Projects: Decomposition Techniques - Software Sizing, Problem-Based Estimation, An Example of LOC-Based Estimation, An Example of FP-Based Estimation, COCOMO Model"
+      },
+      {
+        "number": 4,
+        "title": "Function-oriented Modelling, Design and Coding",
+        "topics": "Function-oriented modelling, Design Concepts -Coupling, Cohesion, Flow-oriented modelling-DFDs with Examples, Software Architecture, A Brief Taxonomy of Architectural Styles, Component-Level Design: Definition, Basic Design Principles, Design Guidelines, Designing Traditional Components, Coding Principles and guidelines, Incremental Development of Code, Code Inspection – Planning."
+      },
+      {
+        "number": 5,
+        "title": "Testing",
+        "topics": "A Strategic approach to software testing, strategic issues, test strategies for Conventional Software, Validation Testing, System Testing, White Box Testing, Black Box. Automatic vs. Manual Testing, Software Review Techniques - Informal Reviews Formal Technical Reviews, Quality Concepts - What is Quality, Software Quality, Objectives, Software Quality Attributes (McCall’s, HP)Deployment overview, Deployment planning, Deployment Rollback."
+      }
+    ],
+    "textbooks": [
+      "Roger S. Pressman “Software Engineering: A practitioner's approach”, McGraw Hill, 9th Edition, 2023.",
+      "Pankaj Jalote, \"Software Engineering Precise Approach”, Wiley Publishers, 2012"
+    ]
+  },
+  "CN": {
+    "officialCode": "22ITC10N",
+    "kind": "theory",
+    "credits": 3,
+    "outcomes": [
+      "Explain the functions of each layer in the OSI, TCP/IP reference models and demonstrate the concepts of Physical Layer.",
+      "Analyse the Data Link Layer protocols and MAC mechanisms.",
+      "Evaluate the Routing algorithms and the IP Protocols.",
+      "Illustrate the functions and performance of Internet Transport Protocols TCP and UDP.",
+      "Explore the various Application layer protocols."
+    ],
+    "units": [
+      {
+        "number": 1,
+        "title": "Introduction",
+        "topics": "Network Hardware, Network Topologies, Reference Models- The OSI Reference Model, the TCP/IP Reference Model – A Comparison of the OSI and TCP/IP Reference, Packet Switching, Circuit Switching and Virtual Circuit Switching. Physical Layer: Guided Transmission media, Twisted Pairs, Coaxial Cable, Fiber Optics, Wireless transmission."
+      },
+      {
+        "number": 2,
+        "title": "Data Link Layer",
+        "topics": "Design Issues, Error Detection and Correction, Elementary Data Link Protocols: Simplex Protocol, A Simplex Stop and Wait Protocol for an Error-free channel, Sliding Window Protocols, Go-Back-N, Selective Repeat. Medium Access Sub Layer: The Channel allocation problem, Multiple Access Protocols: ALOHA, Carrier Sense Multiple Access Protocols."
+      },
+      {
+        "number": 3,
+        "title": "Network Layer",
+        "topics": "Design Issues, Routing algorithms: The Optimality Principle, Shortest Path Algorithm, Flooding, Distance Vector Routing, Link State Routing, OSPF, BGP, Quality of Service, The Network layer in the Internet- The IP Version 4 Protocol, IP Addresses, IP Version 6."
+      },
+      {
+        "number": 4,
+        "title": "Transport Layer",
+        "topics": "Transport Service, Berkeley Sockets, Elements of Transport Protocols, The Internet Transport Protocols: Introduction to UDP, The TCP Protocol, The TCP Segment Header, The TCP Connection Establishment, TCP Connection Release, TCP Sliding Window, TCP Timer Management, TCP Flow Control, Congestion Control."
+      },
+      {
+        "number": 5,
+        "title": "Application Layer",
+        "topics": "DNS, The Domain Name System, The DNS Name Space, Domain Resource Records, Name Servers. Electronic MAIL: Architecture and Services, the User Agent, Message Formats, Message Transfer, Final Delivery, SMTP, FTP, TELNET, SNMP."
+      }
+    ],
+    "textbooks": [
+      "Andrew S. Tanenbaum, David J. Wetherall, “Computer Networks”, 5th Edition, Pearson Education, 2014."
+    ]
+  },
+  "APA": {
+    "officialCode": "22ADE57N",
+    "kind": "theory",
+    "credits": 3,
+    "elective": true,
+    "outcomes": [
+      "Analyze key characteristics of data for modeling.",
+      "Apply clustering techniques and interpret the meaning of the resulting clusters.",
+      "Assess model accuracy to select and deploy the best model.",
+      "Extract features from textual data and build predictive models for textual data.",
+      "Understand various deployment models."
+    ],
+    "units": [
+      {
+        "number": 1,
+        "title": "Overview of Predictive Analytics",
+        "topics": "What Is Predictive Analytics? Business Intelligence, Predictive Analytics vs. Business Intelligence, Predictive Analytics vs. Statistics, Predictive Analytics vs. Data Mining, Challenges in Using Predictive Analytics."
+      },
+      {
+        "number": 2,
+        "title": "Descriptive Modeling",
+        "topics": "Data Preparation Issues with Descriptive Modeling, Principal Component Analysis, Clustering Algorithms, the K-Means Algorithm, the Kohonen SOM Algorithm. Interpreting Descriptive Models: Standard Cluster Model Interpretation, Problems with Interpretation Methods, and Identifying Key Variables in Forming Cluster Models, Cluster Prototypes, and Cluster Outliers."
+      },
+      {
+        "number": 3,
+        "title": "Predictive Modeling",
+        "topics": "Decision Trees, Logistic Regression, Neural Networks, K-Nearest Neighbor, Naïve Bayes, Regression Models, Linear Regression, Other Regression Algorithms. Assessing Predictive Models: Batch Approach to Model Assessment, Percent Correct Classification, Rank-Ordered Approach to Model Assessment, Assessing Regression Models."
+      },
+      {
+        "number": 4,
+        "title": "Text Mining",
+        "topics": "A Predictive Modeling Approach to Text Mining, structured vs. Unstructured Data, Why Text Mining Is Hard, Data Preparation Steps, Text Mining Features, Modeling with Text Mining Features, Regular Expressions."
+      },
+      {
+        "number": 5,
+        "title": "Model Deployment",
+        "topics": "General Deployment Considerations, Sampling Considerations for Rebuilding Models, Champion-Challenger sampling. Case Studies: Survey Analysis Case Study: Overview, Deployment: “What-If” Analysis, Help Desk Case Study, Revisit Business Understanding."
+      }
+    ],
+    "textbooks": [
+      "Abbott, Dean. Applied predictive analytics: Principles and techniques for professional data analyst. John Wiley & Sons, 2014.",
+      "McCarthy, Richard V., et al. applying predictive analytics. Springer International Publishing, 2022."
+    ]
+  },
+  "BI": {
+    "officialCode": "22ADE58N",
+    "kind": "theory",
+    "credits": 3,
+    "elective": true,
+    "outcomes": [
+      "Understand the evolution of BI and AI, their roles in business decision-making, and differentiate between types of analytics.",
+      "Evaluate methods for integrating data and information, ensuring quality, semantic consistency, and relevance to decision-making.",
+      "Apply descriptive, predictive, and prescriptive analytics using big data and AI to derive insights and support business decisions.",
+      "Discuss current and emerging AI-based trends in BI including cloud computing, IoT, 5G, GIS, and the metaverse.",
+      "Analyze real-world BI applications in marketing, finance, and operations through case studies of data-driven decision-making."
+    ],
+    "units": [
+      {
+        "number": 1,
+        "title": "Foundations of Business Intelligence and AI",
+        "topics": "Evolution of BI and AI, Business decision-making processes and decision support, Types of analytics: Descriptive, Predictive, Prescriptive, Artificial Intelligence: definitions, technologies, and applications, AI in various business domains: marketing, finance, HR, robotics, chatbots."
+      },
+      {
+        "number": 2,
+        "title": "BI Dimensions and Information Integration",
+        "topics": "BI implementation dimensions (centralized vs. decentralized, real-time, automation, scope), Business and BI alignment, Data vs. Information integration, Data quality, semantics, and context, Tools and methods for integration."
+      },
+      {
+        "number": 3,
+        "title": "BI Technologies and Analytical Approaches",
+        "topics": "BI technology stack: Data warehousing, OLAP, reporting tools, Business analytics: Descriptive, Predictive, Prescriptive, Big Data and data mining, Visualization tools and dashboards, AI’s role in BI (e.g., machine learning, augmented analytics)"
+      },
+      {
+        "number": 4,
+        "title": "Tools, Trends",
+        "topics": "Landscape of Business Analytics Tools, BI tools: R, Python, KNIME, Tableau, Orange, RapidMiner, AI-Based Trends in Analytics and Data Science, Cloud computing, IoT, 5G, RPA, GIS, and metaverse."
+      },
+      {
+        "number": 5,
+        "title": "Business Applications, Ethics, and Emerging Trends",
+        "topics": "BI in Marketing, Finance, and Operations; Case Studies on Data-Driven Decision Making, Ethics in BI and Data Mining, Risk Management using BI Tools, Competitive Intelligence and Strategic BI, AI Integration with BI Platforms, Future of BI and Intelligent Decision Systems."
+      }
+    ],
+    "textbooks": [
+      "\"Business Intelligence, Analytics, Data Science, and AI: A Managerial Perspective\" by Ramesh Sharda, Dursun Delen, and Efraim Turban (5th Edition).",
+      "\"Business Intelligence: A Comprehensive Approach to Information Needs, Technologies and Culture\" by Rimvydas Skyrius."
+    ]
+  },
+  "NLT": {
+    "officialCode": "22ADE50N",
+    "kind": "theory",
+    "credits": 3,
+    "elective": true,
+    "outcomes": [
+      "Apply text preprocessing techniques such as tokenization, stop word removal, POS tagging, and vectorization on natural language data.",
+      "Make use of pre-trained deep learning models like BiLSTM and CRF for sentiment analysis and named entity recognition.",
+      "Explain the application of transfer learning techniques using pretrained GloVe and BERT models for natural language understanding.",
+      "Describe pretrained models like RNNs, Seq2Seq with attention, and GPT-2 used for text generation and summarization.",
+      "Apply pretrained multi-modal models for performing vision-language tasks such as image captioning using transformers and weak supervision."
+    ],
+    "units": [
+      {
+        "number": 1,
+        "title": "Essentials of NLP",
+        "topics": "A typical text processing workflow, Data collection and labeling, Collecting labeled data, Text normalization, Modeling normalized data Tokenization: Segmentation, Modeling tokenized data. Stop word removal: Modeling data with stop words removed. Part-of-speech tagging: Modeling data with POS tagging Stemming and lemmatization, Vectorizing text: Count-based vectorization, Modeling after count-based vectorization, Term Frequency-Inverse Document Frequency (TF-IDF): Modeling using TF-IDF features, Word vectors: Pertained models using Word2Vec embedding."
+      },
+      {
+        "number": 2,
+        "title": "Understanding Sentiment in Natural Language with BiLSTMs",
+        "topics": "Bi-directional LSTMs (BiLSTMs), RNN building blocks, Long short-term memory (LSTM) networks, Gated recurrent units (GRUs), Sentiment classification with LSTMs, Loading the data, Normalization and vectorization, LSTM model with embeddings, BiLSTM model, Named Entity Recognition, The GMB data set, Loading the data, Normalizing and vectorizing data, A BiLSTM model, Conditional random fields (CRFs), NER with BiLSTM and CRFs, Viterbi decoding."
+      },
+      {
+        "number": 3,
+        "title": "Transfer Learning with BERT",
+        "topics": "Transfer learning overview, Types of transfer learning, Domain adaptation, Multi-task learning, Sequential learning, IMDb sentiment analysis with Glove embeddings: Glove embeddings, Loading IMDb training data, Loading pre-trained Glove embeddings, Creating a pre-trained embedding matrix using Glove, Feature extraction model, Fine-tuning model: BERT-based transfer learning, Encoder-decoder networks, Attention model, Transformer model, The bidirectional encoder representations from transformers (BERT) model, Tokenization and normalization with BERT Pre-built BERT classification model, Custom model with BERT"
+      },
+      {
+        "number": 4,
+        "title": "Generating Text with RNNs and GPT-2",
+        "topics": "Generating text – one character at a time, Data loading and pre-processing, Data normalization and tokenization, Training the model, Implementing learning rate decay as custom callback, Generating text with greedy search, Generative Pre-Training (GPT-2) model, Text Summarization with Seq2seq: Overview of text summarization, Data loading and pre-processing, Data tokenization and vectorization, Seq2seq model with attention, Encoder model, Bahdanau attention layer, Decoder model, Training the model, Generating summaries, Greedy search, Beam search, Decoding penalties with beam search, Evaluating summaries, ROUGE metric evaluation"
+      },
+      {
+        "number": 5,
+        "title": "Multi-Modal Networks and Image",
+        "topics": "Multi-modal deep learning, Vision and language tasks, Image captioning, MS-COCO dataset for image captioning, The Transformer model: Positional encoding and masks, Scaled dot-product and multi-head attention, Visual Encoder, Decoder, Transformer, Training the Transformer model with Visual Encoder, Generating captions, Improving performance and state-of-the-art models, Weak supervision, Using weakly supervised labels to improve IMDb sentiment analysis, Weakly supervised labeling with Snorkel, Naïve-Bayes model for finding keywords."
+      }
+    ],
+    "textbooks": [
+      "Ashish Bansal, Advanced Natural Language Processing with TensorFlow 2, PACKT Publisher, First Edition, 2021."
+    ]
+  },
+  "AAN-LAB": {
+    "officialCode": "22ADC53N",
+    "kind": "lab",
+    "credits": 1.5,
+    "outcomes": [
+      "Design and evaluate deep learning models for binary and multi-class classification.",
+      "Optimize models using various gradient-based techniques and analyze their performance.",
+      "Apply regularization to improve model robustness and reduce overfitting.",
+      "Tune hyperparameters to achieve optimal model accuracy and efficiency.",
+      "Build and evaluate sequential models for real-time, sequence-based applications."
+    ],
+    "weeks": [
+      {
+        "number": 1,
+        "title": "Implement a single-layer perception and Sigmoid for binary classification on a synthetic dataset"
+      },
+      {
+        "number": 2,
+        "title": "Implementation of Classification with Multilayer Perceptron with MNIST Dataset."
+      },
+      {
+        "number": 3,
+        "title": "Compare the Performance of the Classification models by Tuning Hyperparameters."
+      },
+      {
+        "number": 4,
+        "title": "Construct CNN for classification on MNIST Dataset"
+      },
+      {
+        "number": 5,
+        "title": "Implement Deep Learning models like Alex Net, VGGNet and Dense Net and compare their performance"
+      },
+      {
+        "number": 6,
+        "title": "Implementation of ResNet, Googlenet for image classification"
+      },
+      {
+        "number": 7,
+        "title": "Implementation of RNN for text classification"
+      },
+      {
+        "number": 8,
+        "title": "Implement LSTM and Bidirectional LSTM for sentiment analysis"
+      },
+      {
+        "number": 9,
+        "title": "Implementation of Encoder Decoder Models with attention for machine translation"
+      },
+      {
+        "number": 10,
+        "title": "Implementation of GAN Model"
+      }
+    ],
+    "textbooks": [
+      "Ian Goodfellow, Yoshua Bengio, Aaron, Courville, “Deep Learning”, MIT Press, 2016",
+      "Indra den Bakker, “Python Deep Learning Cookbook”, PACKT publisher, 2017",
+      "Wei Di, Anurag Bhardwaj, Jianing Wei, “Deep Learning Essentials”, Packt publishers, 2018"
+    ]
+  },
+  "IDS-LAB": {
+    "officialCode": "22ADC54N",
+    "kind": "lab",
+    "credits": 1.5,
+    "outcomes": [
+      "Identify and utilize appropriate data structures in R for efficient data storage and manipulation.",
+      "Explain various data types and file formats, selecting suitable options for handling real-time data.",
+      "Apply data preprocessing techniques to clean and prepare raw data for analysis, as well as create effective data visualizations.",
+      "Differentiate between supervised and unsupervised learning algorithms, applying these methods to analyze and interpret data.",
+      "Analyze and discuss findings from various case studies, demonstrating the application of data science principles in real-world scenarios."
+    ],
+    "weeks": [
+      {
+        "number": 1,
+        "title": "Implementation of R programming basics including Operators, data types, Variables, String manipulations etc."
+      },
+      {
+        "number": 2,
+        "title": "Demonstrate the usage of R data structures. (List, Vectors, Matrices, Data frames, Factors)"
+      },
+      {
+        "number": 3,
+        "title": "Analyzing different file formats in R. (Data frames, CSV, TSV, Excel Files, XML, Json, HTML)"
+      },
+      {
+        "number": 4,
+        "title": "Implementation of preprocessing techniques on any two datasets."
+      },
+      {
+        "number": 5,
+        "title": "Visualize data using R packages and apply data manipulation - dplyr, data. Table, reshape2, tidyr, etc., and provide your inference."
+      },
+      {
+        "number": 6,
+        "title": "Visualize the importance of LIME."
+      },
+      {
+        "number": 7,
+        "title": "Build a linear regression model and logistic regression model, check the model on test data and predict the numerical quantities."
+      },
+      {
+        "number": 8,
+        "title": "Demonstrate Association rule Technique."
+      },
+      {
+        "number": 9,
+        "title": "Explore text mining techniques and sentiment analysis."
+      }
+    ],
+    "textbooks": [
+      "Zumel, N., Mount, J., &Porzak, J., “Practical data science with R”, 2nd edition. Shelter Island, NY: Manning, 2019.",
+      "Julia Silge and David Robinson. “Text Mining with R: A Tidy Approach”, 1st. edition. O'Reilly Media, Inc., 2017."
+    ]
+  },
+  "MP": {
+    "officialCode": "22ADC55N",
+    "kind": "project",
+    "credits": 1,
+    "outcomes": [
+      "Interpret literature with the purpose of formulating a project proposal.",
+      "Plan, Analyze, Design and Implement a project.",
+      "Find the solution of identified problem with the help of modern Technology and give priority to real time scenarios.",
+      "Plan to work as a team and to focus on getting a working project done and submit a report within a stipulated period of time.",
+      "Prepare and submit the Report and deliver presentation before the Departmental Committee."
+    ],
+    "weeks": [
+      {
+        "number": 1,
+        "title": ""
+      },
+      {
+        "number": 2,
+        "title": ""
+      },
+      {
+        "number": 3,
+        "title": ""
+      },
+      {
+        "number": 4,
+        "title": ""
+      },
+      {
+        "number": 5,
+        "title": ""
+      },
+      {
+        "number": 6,
+        "title": ""
+      },
+      {
+        "number": 7,
+        "title": ""
+      },
+      {
+        "number": 8,
+        "title": ""
+      },
+      {
+        "number": 9,
+        "title": ""
+      },
+      {
+        "number": 10,
+        "title": ""
+      }
+    ],
+    "description": "The students are required to choose a topic for a mini project related to the courses of the current semester or previous semester. The student must implement and present the project as per the given schedule. During the implementation of the project, Personnel Software Process (PSP) must be followed. Report of the project work has to be submitted for evaluation.",
+    "schedule": [
+      {
+        "weeks": "1-2",
+        "title": "Problem Identification / Selection"
+      },
+      {
+        "weeks": "3",
+        "title": "Preparation of Abstract"
+      },
+      {
+        "weeks": "4-10",
+        "title": "Design, Implementation and Testing of the Project"
+      },
+      {
+        "weeks": "after",
+        "title": "Documentation and Project Presentation"
+      }
+    ]
+  }
+}

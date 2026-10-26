@@ -181,8 +181,9 @@ export default function AdminCourses({ onNavigate }) {
                   <label className="block font-semibold text-cloud-700 mb-1">Academic Credits</label>
                   <input
                     type="number"
-                    min={1}
-                    max={6}
+                    min={0.5}
+                    max={10}
+                    step={0.5}
                     required
                     value={newCourse.credits}
                     onChange={(e) => setNewCourse({ ...newCourse, credits: Number(e.target.value) })}

@@ -1,3 +1,4 @@
+import { periodLabel, materialUnitFromRow } from '../lib/syllabus.js';
 // Free RAG answer: find the passages closest in meaning to the question
 // (pgvector), mix in keyword matches, then pick the sentences from those
 // passages that best answer it. Everything stays inside the courses the user
@@ -62,7 +63,7 @@ export async function ragAnswer(user, question) {
     title: byId[m.material_id]?.title || 'Course material',
     courseCode: byId[m.material_id]?.courses?.code || '',
     course: byId[m.material_id]?.courses?.name || '',
-    unit: `Unit ${Number(byId[m.material_id]?.unit) || 1}`,
+    unit: periodLabel(byId[m.material_id]?.courses?.code, materialUnitFromRow(byId[m.material_id]?.unit)),
     page: m.page,
     relevance: Math.round(Math.max(0, Math.min(1, m.similarity)) * 100),
     excerpt: m.content.length > 420 ? m.content.slice(0, 420) + '…' : m.content,

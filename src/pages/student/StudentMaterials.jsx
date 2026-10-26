@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { courseOptions, semesterOptions } from '../../services/filterOptions';
+import { periodLabelOptions } from '../../services/periods';
 import DocumentPreviewModal from '../../components/common/DocumentPreviewModal';
 
 export default function StudentMaterials({ onNavigate }) {
@@ -39,7 +40,7 @@ export default function StudentMaterials({ onNavigate }) {
 
   const filtered = materials.filter((m) => {
     if (selectedCourse !== 'ALL' && m.courseId !== selectedCourse) return false;
-    if (selectedUnit !== 'ALL' && m.unitNumber !== Number(selectedUnit)) return false;
+    if (selectedUnit !== 'ALL' && m.unitTitle !== selectedUnit) return false;
     if (selectedSemester !== 'ALL' && m.semester !== Number(selectedSemester)) return false;
     if (selectedType !== 'ALL' && m.materialType?.toLowerCase() !== selectedType.toLowerCase()) return false;
     if (query.trim()) {
@@ -112,18 +113,16 @@ export default function StudentMaterials({ onNavigate }) {
 
           {/* Unit */}
           <div>
-            <label className="text-[10px] uppercase font-bold text-cloud-400 block mb-1">Curriculum Unit</label>
+            <label className="text-[10px] uppercase font-bold text-cloud-400 block mb-1">Unit / Week</label>
             <select
               value={selectedUnit}
               onChange={(e) => setSelectedUnit(e.target.value)}
               className="w-full px-2.5 py-1.5 rounded-lg border border-cloud-200 text-xs text-cloud-700 bg-white"
             >
-              <option value="ALL">All Units</option>
-              <option value="1">Unit 1</option>
-              <option value="2">Unit 2</option>
-              <option value="3">Unit 3</option>
-              <option value="4">Unit 4</option>
-              <option value="5">Unit 5</option>
+              <option value="ALL">All Units &amp; Weeks</option>
+              {periodLabelOptions(materials).map((l) => (
+                <option key={l} value={l}>{l}</option>
+              ))}
             </select>
           </div>
 

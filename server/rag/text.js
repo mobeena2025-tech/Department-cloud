@@ -5,7 +5,30 @@ export async function extractPdfPages(buffer) {
   const { getDocumentProxy, extractText } = await import('unpdf');
   const pdf = await getDocumentProxy(new Uint8Array(buffer));
   const { totalPages, text } = await extractText(pdf, { mergePages: false });
-  return { totalPages, pages: text.map(cleanText) };
+  return { totalPages, pages: dropBoilerplate(text).map(cleanText) };
+}
+
+// A line of a table of bare numbers/codes (e.g. "CO1 3 2 2 - 1" or "PO1 PO2 PO3").
+const TABLE_TOKEN = /^(\d+(\.\d+)?|[-–]|P?S?O\d+|CO\d+|PO|PSO|CO)$/i;
+function isTableLine(line) {
+  const tokens = line.trim().split(/\s+/).filter(Boolean);
+  if (tokens.length < 4) return false;
+  return tokens.filter((t) => TABLE_TOKEN.test(t)).length / tokens.length >= 0.7;
+}
+
+/**
+ * Removes text that would pollute answers: header/footer lines repeated on
+ * most pages (college name, department) and rows of number tables.
+ */
+export function dropBoilerplate(pageTexts) {
+  const pages = pageTexts.map((t) => String(t || '').split('\n'));
+  const counts = new Map();
+  for (const lines of pages) {
+    for (const l of new Set(lines.map((x) => x.trim()).filter(Boolean))) counts.set(l, (counts.get(l) || 0) + 1);
+  }
+  const needed = Math.max(2, Math.ceil(pages.length * 0.6));
+  const repeated = (l) => pages.length >= 2 && (counts.get(l.trim()) || 0) >= needed && l.trim().length < 120;
+  return pages.map((lines) => lines.filter((l) => !isTableLine(l) && !repeated(l)).join('\n'));
 }
 
 export function cleanText(s) {

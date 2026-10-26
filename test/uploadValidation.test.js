@@ -1,7 +1,7 @@
 import { test, before, after, beforeEach } from 'node:test';
 import assert from 'node:assert/strict';
 import { db, ids, tokens, resetDb, startServer, stopServer, request, pdfForm } from './helpers/fakeSupabase.js';
-import { isAllowedPdf, hasPdfSignature, MAX_UPLOAD_BYTES } from '../server/lib/pdfUpload.js';
+import { isAllowedPdf, hasPdfSignature, MAX_MATERIAL_BYTES } from '../server/lib/pdfUpload.js';
 
 before(startServer);
 after(stopServer);
@@ -29,8 +29,10 @@ test('rejects files that fail the type, extension or content checks', async () =
   const cases = [
     { name: 'notes.txt', type: 'text/plain', content: 'hello' },
     { name: 'notes.txt', type: 'application/pdf', content: '%PDF-1.4' },
-    { name: 'notes.pdf', type: 'text/plain', content: '%PDF-1.4' },
     { name: 'notes.pdf', type: 'application/pdf', content: 'not really a pdf' },
+    { name: 'slides.pptx', type: 'application/octet-stream', content: 'not really slides' },
+    { name: 'notes.docx', type: 'application/octet-stream', content: '%PDF-1.4 a pdf renamed to docx' },
+    { name: 'tool.exe', type: 'application/octet-stream', content: 'MZ' },
   ];
   for (const file of cases) {
     const res = await upload(tokens.facultyA, fields, file);
@@ -39,8 +41,8 @@ test('rejects files that fail the type, extension or content checks', async () =
   assert.equal(db.uploads.length, 0, 'nothing reached storage');
 });
 
-test('rejects files over 10 MB with 413', async () => {
-  const big = '%PDF-' + 'x'.repeat(MAX_UPLOAD_BYTES);
+test('rejects material files over 20 MB with 413', async () => {
+  const big = '%PDF-' + 'x'.repeat(MAX_MATERIAL_BYTES);
   const res = await upload(tokens.facultyA, { title: 'x', courseId: 'CS202' }, { name: 'big.pdf', type: 'application/pdf', content: big });
   assert.equal(res.status, 413);
   assert.equal(db.uploads.length, 0);

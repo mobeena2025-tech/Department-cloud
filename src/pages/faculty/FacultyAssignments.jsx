@@ -77,7 +77,7 @@ export default function FacultyAssignments({ onNavigate }) {
               <p className="text-xs text-cloud-600 leading-relaxed">{asg.description}</p>
 
               <div className="flex items-center gap-4 text-xs text-cloud-500 pt-1">
-                <span>Unit: <strong>Unit {asg.unitNumber}</strong></span>
+                <span>Unit / Week: <strong>{asg.unitTitle}</strong></span>
                 {asg.attachmentName && (
                   <span className="text-brand-600 font-mono bg-brand-50 px-2 py-0.5 rounded">
                     Attachment: {asg.attachmentName}

@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { UploadCloud, FileText } from 'lucide-react';
-import { api, validatePdfFile, formatFileSize } from '../../services/api';
+import { api, validateMaterialFile, MATERIAL_ACCEPT, formatFileSize } from '../../services/api';
 import { useNotification } from '../../context/NotificationContext';
-
-const UNITS = [1, 2, 3, 4, 5];
+import { periodChoices, periodWord, toApiPeriod } from '../../services/periods';
 
 // Plain upload: choose a PDF, a course you teach, the unit and a title.
 export default function UploadMaterialForm({ onUploaded, onCancel }) {
@@ -13,7 +12,7 @@ export default function UploadMaterialForm({ onUploaded, onCancel }) {
   const [courses, setCourses] = useState(null); // null = loading
   const [file, setFile] = useState(null);
   const [courseId, setCourseId] = useState('');
-  const [unitNumber, setUnitNumber] = useState(1);
+  const [unitNumber, setUnitNumber] = useState('1'); // '1'..'n' or 'other'
   const [title, setTitle] = useState('');
   const [topic, setTopic] = useState('');
   const [summary, setSummary] = useState('');
@@ -35,7 +34,7 @@ export default function UploadMaterialForm({ onUploaded, onCancel }) {
   const handleFile = (e) => {
     const chosen = e.target.files?.[0];
     if (!chosen) return;
-    const problem = validatePdfFile(chosen);
+    const problem = validateMaterialFile(chosen);
     if (problem) {
       addToast(problem, 'warning', 'File Rejected');
       e.target.value = '';
@@ -44,7 +43,7 @@ export default function UploadMaterialForm({ onUploaded, onCancel }) {
     }
     setFile(chosen);
     // Start the title from the file name; faculty can change it.
-    if (!title.trim()) setTitle(chosen.name.replace(/\.pdf$/i, '').replace(/[_-]+/g, ' ').trim());
+    if (!title.trim()) setTitle(chosen.name.replace(/\.(pdf|pptx?|docx?)$/i, '').replace(/[_-]+/g, ' ').trim());
   };
 
   const reset = () => {
@@ -57,7 +56,7 @@ export default function UploadMaterialForm({ onUploaded, onCancel }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!file) return addToast('Please choose a PDF file.', 'warning', 'Missing File');
+    if (!file) return addToast('Please choose a file.', 'warning', 'Missing File');
     if (!courseId) return addToast('Please choose a course.', 'warning', 'Missing Course');
     if (!title.trim()) return addToast('Please enter a title.', 'warning', 'Missing Title');
 
@@ -67,7 +66,7 @@ export default function UploadMaterialForm({ onUploaded, onCancel }) {
       form.append('file', file);
       form.append('title', title.trim());
       form.append('courseId', courseId);
-      form.append('unitNumber', String(unitNumber));
+      form.append('unitNumber', String(toApiPeriod(unitNumber)));
       if (topic.trim()) form.append('topic', topic.trim());
       if (summary.trim()) form.append('summary', summary.trim());
 
@@ -82,6 +81,7 @@ export default function UploadMaterialForm({ onUploaded, onCancel }) {
     }
   };
 
+  const selectedCourse = (courses || []).find((c) => c.id === courseId);
   const field = 'w-full px-3 py-2 rounded-xl border border-cloud-200 text-xs text-cloud-900 bg-white focus:outline-none focus:border-brand-500';
   const label = 'block text-xs font-semibold text-cloud-700 mb-1';
 
@@ -97,22 +97,22 @@ export default function UploadMaterialForm({ onUploaded, onCancel }) {
     <form onSubmit={handleSubmit} className="space-y-4">
       {/* File */}
       <label className="block border-2 border-dashed border-cloud-300 hover:border-brand-400 bg-cloud-50/50 hover:bg-brand-50/20 rounded-xl p-5 text-center transition-colors cursor-pointer">
-        <input ref={fileInputRef} type="file" accept=".pdf,application/pdf" onChange={handleFile} className="sr-only" />
+        <input ref={fileInputRef} type="file" accept={MATERIAL_ACCEPT} onChange={handleFile} className="sr-only" />
         <div className="w-11 h-11 rounded-xl bg-brand-50 border border-brand-200 text-brand-600 flex items-center justify-center mx-auto mb-2">
           <FileText className="w-5 h-5" />
         </div>
         <div className="text-xs font-semibold text-cloud-800">
-          {file ? file.name : 'Click to choose a PDF'}
+          {file ? file.name : 'Click to choose a file'}
         </div>
         <div className="text-[11px] text-cloud-500 mt-0.5">
-          {file ? formatFileSize(file.size) : 'PDF only, up to 10 MB'}
+          {file ? formatFileSize(file.size) : 'PDF, PowerPoint or Word, up to 20 MB'}
         </div>
       </label>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="sm:col-span-2">
+      <div className="grid grid-cols-1 gap-3">
+        <div>
           <label className={label}>Course <span className="text-rose-500">*</span></label>
-          <select value={courseId} onChange={(e) => setCourseId(e.target.value)} className={field} disabled={!courses}>
+          <select value={courseId} onChange={(e) => { setCourseId(e.target.value); setUnitNumber('1'); }} className={field} disabled={!courses}>
             <option value="">{courses ? 'Choose a course' : 'Loading...'}</option>
             {(courses || []).map((c) => (
               <option key={c.id} value={c.id}>{c.code} — {c.title}</option>
@@ -120,9 +120,9 @@ export default function UploadMaterialForm({ onUploaded, onCancel }) {
           </select>
         </div>
         <div>
-          <label className={label}>Unit</label>
-          <select value={unitNumber} onChange={(e) => setUnitNumber(Number(e.target.value))} className={field}>
-            {UNITS.map((u) => <option key={u} value={u}>Unit {u}</option>)}
+          <label className={label}>{periodWord(selectedCourse)}</label>
+          <select value={unitNumber} onChange={(e) => setUnitNumber(e.target.value)} className={field}>
+            {periodChoices(selectedCourse).map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
           </select>
         </div>
       </div>
@@ -143,7 +143,7 @@ export default function UploadMaterialForm({ onUploaded, onCancel }) {
       </div>
 
       <p className="text-[11px] text-cloud-500">
-        Only students enrolled in the course can open it. The Academic Assistant reads the PDF so students can ask questions about it.
+        Only students enrolled in the course can open it. The Academic Assistant reads PDFs so students can ask questions about them; PowerPoint and Word files are download-only.
       </p>
 
       <div className="pt-3 border-t border-cloud-200 flex items-center justify-end gap-2">

@@ -1,6 +1,7 @@
 import express from 'express';
 import { searchAcademicContent, ASSIGNMENT_WORDS } from '../services/assistant.js';
 import { ragAnswer } from '../rag/search.js';
+import { syllabusAnswer } from '../services/syllabusAnswer.js';
 import { recordAuditLog } from '../lib/audit.js';
 import { asyncHandler, requiredString } from '../lib/validate.js';
 
@@ -14,11 +15,15 @@ const router = express.Router();
 router.post('/', asyncHandler(async (req, res) => {
   const query = requiredString(req.body?.query, 'query', { max: 300 });
 
-  // Run both searches at the same time.
-  const [keyword, rag] = await Promise.all([
+  // Run the searches at the same time.
+  const [keyword, rag, syllabus] = await Promise.all([
     searchAcademicContent(req.user, query),
     ragAnswer(req.user, query).catch((err) => {
       console.error('[RAG] falling back to keyword search:', err.message);
+      return null;
+    }),
+    syllabusAnswer(req.user, query).catch((err) => {
+      console.error('[Syllabus] answer failed:', err.message);
       return null;
     }),
   ]);
@@ -28,7 +33,21 @@ router.post('/', asyncHandler(async (req, res) => {
   const assignmentQuestion = ASSIGNMENT_WORDS.test(query.toLowerCase()) && keyword.assignments.length > 0;
 
   let result;
-  if (assignmentQuestion) {
+  if (syllabus && !assignmentQuestion) {
+    // A question about a course's units/weeks/textbooks/outcomes: answer it
+    // exactly from the official syllabus.
+    result = {
+      query,
+      method: 'syllabus',
+      found: true,
+      answer: syllabus.answer,
+      answerSentences: [],
+      sources: syllabus.sources,
+      assignments: keyword.assignments,
+      relatedQuestions: keyword.relatedQuestions,
+      timestamp: new Date().toISOString(),
+    };
+  } else if (assignmentQuestion) {
     result = {
       query,
       method: rag ? 'rag-extractive' : 'keyword-search',

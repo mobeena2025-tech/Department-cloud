@@ -1,5 +1,6 @@
 import express from 'express';
 import { DEPARTMENT } from '../lib/department.js';
+import { materialUnitFromRow } from '../lib/syllabus.js';
 import supabase from '../supabase.js';
 import { findCourse, isUuid } from '../lib/courseLookup.js';
 import { requireRole, toUserResponse } from '../lib/auth.js';
@@ -89,7 +90,7 @@ router.get('/', asyncHandler(async (req, res) => {
     ]);
     if (m.error) throw dbError('Course materials count error', m.error);
     if (a.error) throw dbError('Course assignments count error', a.error);
-    materials = m.data.map((r) => ({ courseId: r.course_id, unitNumber: Number(r.unit) || 1 }));
+    materials = m.data.map((r) => ({ courseId: r.course_id, unitNumber: materialUnitFromRow(r.unit) }));
     assignments = a.data.map((r) => ({ courseId: r.course_id, unitNumber: r.unit_number, status: r.status }));
   }
   const { faculty, enrolled } = await loadStaffAndEnrollment(ids);
@@ -182,7 +183,11 @@ router.post('/', requireRole('admin'), asyncHandler(async (req, res) => {
   const name = requiredString(body.title ?? body.name, 'title', { max: 150 });
   const semester = requiredInt(body.semester, 'semester', { min: 1, max: 8 });
   const section = (optionalString(body.section, 'section', { max: 2, pattern: SECTION_PATTERN }) || 'A').toUpperCase();
-  const credits = optionalInt(body.credits, 'credits', { min: 1, max: 10 }) ?? 3;
+  // Whole or half credits (labs are 1.5).
+  const credits = body.credits === undefined || body.credits === '' ? 3 : Number(body.credits);
+  if (!Number.isFinite(credits) || credits < 0.5 || credits > 10 || !Number.isInteger(credits * 2)) {
+    throw new HttpError(400, 'credits must be between 0.5 and 10, in steps of 0.5');
+  }
   const description = optionalString(body.description, 'description', { max: 2000 }) ?? null;
   const department = optionalString(body.department, 'department', { max: 100 }) ?? DEPARTMENT;
   const facultyId = optionalString(body.facultyId, 'facultyId', { max: 40 });

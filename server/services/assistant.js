@@ -1,6 +1,7 @@
 import supabase from '../supabase.js';
 import { visibleCourseIds } from '../lib/access.js';
 import { HttpError } from '../lib/validate.js';
+import { periodLabel, materialUnitFromRow } from '../lib/syllabus.js';
 
 // Academic Assistant (prototype): simple keyword retrieval over the titles,
 // topics and descriptions of materials and assignments in the courses the
@@ -49,13 +50,13 @@ export function scoreFields(terms, fields) {
 }
 
 function unitFromQuery(q) {
-  const m = q.match(/\bunit\s*(\d{1,2})\b/);
+  const m = q.match(/\b(?:unit|week)\s*(\d{1,2})\b/);
   return m ? Number(m[1]) : null;
 }
 
 export async function searchAcademicContent(user, query) {
   const q = query.toLowerCase();
-  const terms = tokenize(q).filter((t) => t !== 'unit' && !/^\d+$/.test(t));
+  const terms = tokenize(q).filter((t) => t !== 'unit' && t !== 'week' && !/^\d+$/.test(t));
   const unit = unitFromQuery(q);
   const wantsAssignments = ASSIGNMENT_WORDS.test(q);
 
@@ -104,7 +105,7 @@ export async function searchAcademicContent(user, query) {
       title: r.title,
       course: r.courses?.name || '',
       courseCode: r.courses?.code || '',
-      unit: `Unit ${Number(r.unit) || 1}`,
+      unit: periodLabel(r.courses?.code, materialUnitFromRow(r.unit)),
       relevance: Math.min(100, Math.round((score / maxScore) * 100)),
       excerpt: r.topic || r.description || 'No topic or description was added for this material.',
     }));

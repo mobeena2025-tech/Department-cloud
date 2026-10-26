@@ -61,8 +61,8 @@ npm ci
    **Allow new users to sign up**. (Accounts are created by the seed script or by an
    admin. A self-signed-up account has no role and the API refuses it anyway.)
 
-> `supabase/migrations/000–005` are the same changes applied step by step to the
-> original project. You don't need them for a new project.
+> `supabase/migrations/000–009` are the same changes applied step by step to the
+> original project. You don't need them for a new project; `schema.sql` has them all.
 
 ### 4. Environment variables
 
@@ -179,6 +179,36 @@ npm run import-people -- private/people.csv
 
 ---
 
+## Syllabus, units and weeks
+
+The official AI & DS Semester V syllabus is stored in
+[`server/data/syllabus-sem5.json`](server/data/syllabus-sem5.json) (extracted from the
+department PDF), keyed by course code.
+
+- **Theory courses** are organised in **Units 1–5** (with the unit titles and topics);
+  **labs** in **weeks** (one program per week: AAN Lab 1–10, IDS Lab 1–9); the
+  **Mini Project** in Weeks 1–10. Courses not in the file fall back to Units 1–5
+  (or weeks if the code ends in `-LAB`).
+- Uploads and assignments pick a unit/week from that course's list, or **Other**
+  (e.g. a case study or question bank that belongs to no unit).
+- Each course page has a **Syllabus** tab (units/weekly programs, outcomes,
+  textbooks), and each course has its syllabus PDF under *Other*.
+- The Assistant answers syllabus questions exactly from this data, e.g. *"unit 4 of
+  operating systems"*, *"week 3 program in the ANN lab"*, *"textbooks for CN"*.
+- Labs carry 1.5 credits: run
+  [`supabase/migrations/008_half_credits.sql`](supabase/migrations/008_half_credits.sql)
+  once on an existing project.
+
+## File types
+
+Faculty can upload **PDF, PowerPoint (.ppt/.pptx) and Word (.doc/.docx)**, up to
+20 MB. The server checks each file's contents, not just its name. Only PDFs are read
+by the Assistant; PowerPoint and Word files are download-only. Scanned PDFs (pictures
+of pages) have no text, so the Assistant can't search them either. Student
+submissions stay PDF-only.
+
+---
+
 ## Academic Assistant (free RAG)
 
 The assistant answers questions from **inside the course PDFs**, with no paid AI service
@@ -196,6 +226,9 @@ and no API key:
    close enough it says so instead of guessing. Nothing is generated.
 
 Setup: run [`supabase/migrations/006_rag_passages.sql`](supabase/migrations/006_rag_passages.sql)
+and [`009_exact_course_search.sql`](supabase/migrations/009_exact_course_search.sql)
+(searches each student's own courses exactly, so one huge PDF in another course
+can't crowd out their results)
 (already in `schema.sql`), then index existing PDFs once:
 
 ```bash

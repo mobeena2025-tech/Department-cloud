@@ -1,4 +1,5 @@
 import express from 'express';
+import { parsePeriod } from '../lib/syllabus.js';
 import supabase from '../supabase.js';
 import { findCourse, isUuid } from '../lib/courseLookup.js';
 import { requireRole } from '../lib/auth.js';
@@ -83,7 +84,8 @@ router.post('/', requireRole('faculty', 'admin'), asyncHandler(async (req, res) 
   const dueDate = optionalDate(body.dueDate, 'dueDate');
   if (!dueDate) throw new HttpError(400, 'dueDate is required');
   const description = optionalString(body.description, 'description', { max: 5000 }) ?? null;
-  const unitNumber = optionalInt(body.unitNumber, 'unitNumber', { min: 1, max: 10 }) ?? 1;
+  const parsedUnit = parsePeriod(body.unitNumber);
+  const unitNumber = parsedUnit === undefined ? 1 : parsedUnit; // null = "Other" (e.g. a case study)
   const maxMarks = optionalInt(body.maxMarks, 'maxMarks', { min: 1, max: 1000 }) ?? 25;
   const attachmentName = optionalString(body.attachmentName, 'attachmentName', { max: 200 }) ?? null;
 

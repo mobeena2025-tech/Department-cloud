@@ -115,7 +115,7 @@ export default function CourseDetail({ courseId, onNavigate }) {
               </div>
               <div className="flex items-center gap-1.5">
                 <Layers className="w-4 h-4 text-brand-600" />
-                <span>{course.units.length} {course.units.length === 1 ? 'Unit' : 'Units'} with content</span>
+                <span>{course.periodType === 'week' ? 'Weekly lab / project plan' : '5-unit syllabus'}{course.officialCode ? ` • ${course.officialCode}` : ''}</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <BookOpen className="w-4 h-4 text-brand-600" />
@@ -145,7 +145,7 @@ export default function CourseDetail({ courseId, onNavigate }) {
                 : 'text-cloud-600 hover:bg-cloud-50'
             }`}
           >
-            Unit Courseware ({course.materials?.length || 0})
+            Courseware ({course.materials?.length || 0})
           </button>
           <button
             onClick={() => setActiveTab('overview')}
@@ -155,7 +155,7 @@ export default function CourseDetail({ courseId, onNavigate }) {
                 : 'text-cloud-600 hover:bg-cloud-50'
             }`}
           >
-            Course Syllabus & Units
+            Syllabus
           </button>
           <button
             onClick={() => setActiveTab('assignments')}
@@ -201,11 +201,11 @@ export default function CourseDetail({ courseId, onNavigate }) {
                 >
                   <div className="flex items-center gap-3">
                     <span className="w-7 h-7 rounded-lg bg-brand-100 text-brand-800 font-bold text-xs flex items-center justify-center">
-                      U{unit.unitNumber}
+                      {unit.unitNumber === null ? '•' : `${(unit.label || 'U')[0]}${unit.unitNumber}`}
                     </span>
                     <div>
                       <h3 className="text-sm font-bold text-cloud-900">
-                        Unit {unit.unitNumber}{unit.title ? `: ${unit.title}` : ''}
+                        {unit.label || `Unit ${unit.unitNumber}`}{unit.title ? `: ${unit.title}` : ''}
                       </h3>
                       <p className="text-[11px] text-cloud-500">
                         {unitMaterials.length} materials published
@@ -230,7 +230,7 @@ export default function CourseDetail({ courseId, onNavigate }) {
                   <div className="p-4 divide-y divide-cloud-100">
                     {unitMaterials.length === 0 ? (
                       <div className="p-4 text-center text-xs text-cloud-400">
-                        No materials uploaded for this unit yet.
+                        Nothing uploaded here yet.
                       </div>
                     ) : (
                       unitMaterials.map((mat) => (
@@ -248,7 +248,7 @@ export default function CourseDetail({ courseId, onNavigate }) {
                                 {mat.title}
                               </h4>
                               <p className="text-[11px] text-cloud-500 truncate">
-                                Topic: {mat.topic} &bull; Uploaded {mat.uploadDate}
+                                {mat.topic ? <>Topic: {mat.topic} &bull; </> : null}Uploaded {mat.uploadDate}
                               </p>
                             </div>
                           </div>
@@ -272,31 +272,89 @@ export default function CourseDetail({ courseId, onNavigate }) {
         </div>
       )}
 
-      {/* Tab: Course Syllabus & Units Overview */}
+      {/* Tab: Syllabus (official Semester 5 syllabus) */}
       {activeTab === 'overview' && (
         <div className="space-y-4">
-          <div className="cloud-card p-6">
-            <h3 className="text-sm font-bold text-cloud-900 mb-2">Course Abstract</h3>
-            <p className="text-xs text-cloud-700 leading-relaxed">
-              {course.description || 'No course description has been added yet.'}
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            {course.units?.map((u) => (
-              <div key={u.unitNumber} className="cloud-card p-5">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="badge-pill bg-brand-50 text-brand-700 font-bold text-xs">
-                    Unit {u.unitNumber}
-                  </span>
-                  <h4 className="text-sm font-bold text-cloud-900">{u.title}</h4>
+          {!course.syllabus ? (
+            <div className="cloud-card p-6 text-xs text-cloud-600">
+              {course.description || 'No syllabus has been added for this course yet.'}
+            </div>
+          ) : (
+            <>
+              {course.syllabus.description && (
+                <div className="cloud-card p-6">
+                  <h3 className="text-sm font-bold text-cloud-900 mb-2">About this course</h3>
+                  <p className="text-xs text-cloud-700 leading-relaxed">{course.syllabus.description}</p>
                 </div>
-                <p className="text-xs text-cloud-600 mt-1 leading-relaxed">
-                  {u.description}
-                </p>
-              </div>
-            ))}
-          </div>
+              )}
+
+              {/* Units (theory) */}
+              {course.syllabus.units?.map((u) => (
+                <div key={u.number} className="cloud-card p-5">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <span className="badge-pill bg-brand-50 text-brand-700 font-bold text-xs">Unit {u.number}</span>
+                    <h4 className="text-sm font-bold text-cloud-900">{u.title}</h4>
+                  </div>
+                  <p className="text-xs text-cloud-600 mt-1 leading-relaxed">{u.topics}</p>
+                </div>
+              ))}
+
+              {/* Weekly programs (labs) */}
+              {course.syllabus.kind === 'lab' && (
+                <div className="cloud-card p-5">
+                  <h3 className="text-sm font-bold text-cloud-900 mb-3">Weekly programs</h3>
+                  <ol className="space-y-2">
+                    {course.syllabus.weeks.map((w) => (
+                      <li key={w.number} className="flex gap-3 text-xs text-cloud-700">
+                        <span className="badge-pill bg-brand-50 text-brand-700 font-bold flex-shrink-0">Week {w.number}</span>
+                        <span className="leading-relaxed">{w.title}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+
+              {/* Mini project schedule */}
+              {course.syllabus.schedule && (
+                <div className="cloud-card p-5">
+                  <h3 className="text-sm font-bold text-cloud-900 mb-3">Schedule</h3>
+                  <ul className="space-y-2">
+                    {course.syllabus.schedule.map((step) => (
+                      <li key={step.title} className="flex gap-3 text-xs text-cloud-700">
+                        <span className="badge-pill bg-brand-50 text-brand-700 font-bold flex-shrink-0">
+                          {step.weeks === 'after' ? 'Final weeks' : `Week ${step.weeks}`}
+                        </span>
+                        <span>{step.title}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {course.syllabus.outcomes?.length > 0 && (
+                <div className="cloud-card p-5">
+                  <h3 className="text-sm font-bold text-cloud-900 mb-2">Course outcomes</h3>
+                  <p className="text-[11px] text-cloud-500 mb-2">After this course, students will be able to:</p>
+                  <ol className="list-decimal list-inside space-y-1 text-xs text-cloud-700">
+                    {course.syllabus.outcomes.map((o) => <li key={o}>{o}</li>)}
+                  </ol>
+                </div>
+              )}
+
+              {course.syllabus.textbooks?.length > 0 && (
+                <div className="cloud-card p-5">
+                  <h3 className="text-sm font-bold text-cloud-900 mb-2">Textbooks</h3>
+                  <ol className="list-decimal list-inside space-y-1 text-xs text-cloud-700">
+                    {course.syllabus.textbooks.map((t) => <li key={t}>{t}</li>)}
+                  </ol>
+                </div>
+              )}
+
+              <p className="text-[11px] text-cloud-400">
+                {course.syllabus.officialCode} &bull; {course.syllabus.credits} credits &bull; from the AI &amp; DS Semester V syllabus (AY 2024-25)
+              </p>
+            </>
+          )}
         </div>
       )}
 

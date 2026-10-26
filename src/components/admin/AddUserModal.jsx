@@ -14,8 +14,8 @@ export default function AddUserModal({ isOpen, onClose, onUserAdded }) {
     department: 'AI & DS',
     rollNo: '',
     empId: '',
-    semester: 6,
-    section: 'A',
+    semester: 5,
+    section: '1',
     designation: '',
   });
 
@@ -69,7 +69,7 @@ export default function AddUserModal({ isOpen, onClose, onUserAdded }) {
         <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs">
           <div>
             <label className="block font-semibold text-cloud-700 mb-1">Select Role</label>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <button
                 type="button"
                 onClick={() => setFormData({ ...formData, role: 'student' })}
@@ -94,7 +94,24 @@ export default function AddUserModal({ isOpen, onClose, onUserAdded }) {
                 <Briefcase className="w-4 h-4 text-emerald-600" />
                 <span>Faculty</span>
               </button>
+              <button
+                type="button"
+                onClick={() => setFormData({ ...formData, role: 'admin', designation: formData.designation || 'HOD' })}
+                className={`p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all ${
+                  formData.role === 'admin'
+                    ? 'border-purple-500 bg-purple-50 text-purple-900 font-semibold'
+                    : 'border-cloud-200 hover:bg-cloud-50 text-cloud-700'
+                }`}
+              >
+                <Shield className="w-4 h-4 text-purple-600" />
+                <span>Admin / HOD</span>
+              </button>
             </div>
+            {formData.role === 'admin' && (
+              <p className="text-[11px] text-purple-800 mt-1.5">
+                Admins can manage every account, course and file, and see the activity log.
+              </p>
+            )}
           </div>
 
           <div>

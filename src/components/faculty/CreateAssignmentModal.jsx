@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Calendar, ClipboardList, Paperclip } from 'lucide-react';
 import { api } from '../../services/api';
 import { useNotification } from '../../context/NotificationContext';
+import { periodChoices, periodWord, toApiPeriod } from '../../services/periods';
 
 export default function CreateAssignmentModal({ isOpen, onClose, onCreated, courses = [] }) {
   const { addToast } = useNotification();
   const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
-    courseId: courses[0]?.id || '',
-    unitNumber: 2,
+    courseId: '',
+    unitNumber: '1', // '1'..'n' or 'other'
     // Default due date: one week from now, 23:59 local time.
     dueDate: (() => {
       const d = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
@@ -21,12 +22,28 @@ export default function CreateAssignmentModal({ isOpen, onClose, onCreated, cour
     attachmentName: '',
   });
 
+  // Courses load after this window is created, so pick the course when it
+  // opens (the only course, if there is just one) instead of at creation time.
+  useEffect(() => {
+    if (!isOpen) return;
+    setFormData((f) => {
+      if (f.courseId && courses.some((c) => c.id === f.courseId)) return f;
+      return { ...f, courseId: courses.length === 1 ? courses[0].id : '', unitNumber: '1' };
+    });
+  }, [isOpen, courses]);
+
   if (!isOpen) return null;
+
+  const selectedCourse = courses.find((c) => c.id === formData.courseId);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!formData.title.trim()) {
       addToast('Assignment title is required', 'error');
+      return;
+    }
+    if (!formData.courseId) {
+      addToast('Please choose a course', 'error');
       return;
     }
 
@@ -35,6 +52,7 @@ export default function CreateAssignmentModal({ isOpen, onClose, onCreated, cour
       // Send the due date as an exact moment (the input has no time zone).
       const res = await api.createAssignment({
         ...formData,
+        unitNumber: toApiPeriod(formData.unitNumber),
         dueDate: new Date(formData.dueDate).toISOString(),
       });
       addToast(`Assignment "${formData.title}" published!`, 'success', 'Course Assessment');
@@ -77,19 +95,22 @@ export default function CreateAssignmentModal({ isOpen, onClose, onCreated, cour
               required
               value={formData.title}
               onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              placeholder="e.g. ANN Assignment 3: Convolutional Operations in NumPy"
+              placeholder="e.g. OS Assignment 2: CPU scheduling problems"
               className="w-full px-3 py-2 rounded-xl border border-cloud-200 text-cloud-900 focus:outline-none focus:border-brand-500"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-cloud-700 mb-1">Course</label>
+              <label className="block font-semibold text-cloud-700 mb-1">
+                Course <span className="text-rose-500">*</span>
+              </label>
               <select
                 value={formData.courseId}
-                onChange={(e) => setFormData({ ...formData, courseId: e.target.value })}
+                onChange={(e) => setFormData({ ...formData, courseId: e.target.value, unitNumber: '1' })}
                 className="w-full px-3 py-2 rounded-xl border border-cloud-200 text-cloud-900 bg-white"
               >
+                <option value="">{courses.length ? 'Choose a course' : 'Loading your courses...'}</option>
                 {courses.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.code} — {c.title}
@@ -99,17 +120,15 @@ export default function CreateAssignmentModal({ isOpen, onClose, onCreated, cour
             </div>
 
             <div>
-              <label className="block font-semibold text-cloud-700 mb-1">Syllabus Unit</label>
+              <label className="block font-semibold text-cloud-700 mb-1">{periodWord(selectedCourse)}</label>
               <select
                 value={formData.unitNumber}
-                onChange={(e) => setFormData({ ...formData, unitNumber: Number(e.target.value) })}
+                onChange={(e) => setFormData({ ...formData, unitNumber: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl border border-cloud-200 text-cloud-900 bg-white"
               >
-                <option value={1}>Unit 1</option>
-                <option value={2}>Unit 2</option>
-                <option value={3}>Unit 3</option>
-                <option value={4}>Unit 4</option>
-                <option value={5}>Unit 5</option>
+                {periodChoices(selectedCourse).map((p) => (
+                  <option key={p.value} value={p.value}>{p.label}</option>
+                ))}
               </select>
             </div>
           </div>
