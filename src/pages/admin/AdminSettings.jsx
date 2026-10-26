@@ -1,164 +1,85 @@
-import React, { useState } from 'react';
-import { Settings, Shield, Sparkles, HardDrive, Key, CheckCircle2 } from 'lucide-react';
-import { useNotification } from '../../context/NotificationContext';
+import React, { useState, useEffect } from 'react';
+import { Settings, Shield, Sparkles, HardDrive, Database, Server } from 'lucide-react';
+import { api } from '../../services/api';
 
+// Read-only facts about how this deployment works, with live counts.
+// (Configuration lives in the server's environment and in Supabase, not here.)
 export default function AdminSettings() {
-  const { addToast } = useNotification();
-  const [provider, setProvider] = useState('local');
-  const [saved, setSaved] = useState(false);
+  const [overview, setOverview] = useState(null);
 
-  const handleSave = (e) => {
-    e.preventDefault();
-    setSaved(true);
-    addToast('Department Cloud Configuration updated successfully!', 'success', 'Settings Saved');
-    setTimeout(() => setSaved(false), 3000);
-  };
+  useEffect(() => {
+    api.getAnalytics().then((res) => setOverview(res?.analytics?.overview || null)).catch(() => {});
+  }, []);
+
+  const n = (v) => (overview ? v ?? '—' : '…');
+
+  const section = (Icon, title, rows) => (
+    <div className="cloud-card p-6 space-y-3">
+      <h2 className="text-sm font-bold text-cloud-900 pb-2 border-b border-cloud-100 flex items-center gap-2">
+        <Icon className="w-4 h-4 text-brand-600" />
+        {title}
+      </h2>
+      <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-xs">
+        {rows.map(([label, value]) => (
+          <div key={label}>
+            <dt className="text-cloud-500">{label}</dt>
+            <dd className="font-semibold text-cloud-900 mt-0.5">{value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <div>
         <h1 className="text-xl font-bold text-cloud-900 flex items-center gap-2">
           <Settings className="w-5 h-5 text-brand-600" />
-          Department Cloud Settings & Integrations
+          System Information
         </h1>
         <p className="text-xs text-cloud-500">
-          Configure academic term parameters, cloud object storage keys, and future AI service connectors
+          How this deployment is set up. Settings are changed on the server and in Supabase, not on this page.
         </p>
       </div>
 
-      <form onSubmit={handleSave} className="space-y-6">
-        
-        {/* Academic Term Configuration */}
-        <div className="cloud-card p-6 space-y-4">
-          <h2 className="text-sm font-bold text-cloud-900 pb-2 border-b border-cloud-100">
-            Current Academic Term Parameters
-          </h2>
+      {section(Database, 'Department data', [
+        ['Department', 'Artificial Intelligence & Data Science (AI & DS)'],
+        ['Syllabus loaded', 'Semester V, AY 2024-25'],
+        ['Students / Faculty / Admins', `${n(overview?.totalStudents)} / ${n(overview?.totalFaculty)} / ${n(overview?.totalAdmins)}`],
+        ['Courses / Enrollments', `${n(overview?.totalCourses)} / ${n(overview?.totalEnrollments)}`],
+        ['Materials / Storage used', `${n(overview?.academicResources)} / ${overview ? `${overview.storageUsedMb} MB` : '…'}`],
+        ['Assignments / Submissions (graded)', `${n(overview?.totalAssignments)} / ${n(overview?.totalSubmissions)} (${n(overview?.gradedSubmissions)})`],
+      ])}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-            <div>
-              <label className="block font-semibold text-cloud-700 mb-1">Academic Year</label>
-              <input
-                type="text"
-                defaultValue="2026-2027"
-                className="w-full px-3 py-2 rounded-xl border border-cloud-200 text-cloud-900 bg-white"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold text-cloud-700 mb-1">Active Term</label>
-              <input
-                type="text"
-                defaultValue="B.E. 6th Semester (Autonomous)"
-                className="w-full px-3 py-2 rounded-xl border border-cloud-200 text-cloud-900 bg-white"
-              />
-            </div>
-          </div>
-        </div>
+      {section(Server, 'Application', [
+        ['Web app', 'React 18 + Vite + Tailwind CSS'],
+        ['API', 'Node.js + Express (same server serves the web app)'],
+        ['Hosting', 'Render web service (free plan)'],
+        ['Database', 'Supabase PostgreSQL'],
+      ])}
 
-        {/* AI Model Connector (Demonstrating future integration as requested) */}
-        <div className="cloud-card p-6 space-y-4">
-          <div className="flex items-center justify-between pb-2 border-b border-cloud-100">
-            <h2 className="text-sm font-bold text-cloud-900 flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-brand-600" />
-              AI Semantic Engine Configuration
-            </h2>
-            <span className="badge-pill bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs">
-              Zero External Key Required For Prototype
-            </span>
-          </div>
+      {section(Shield, 'Access control', [
+        ['Sign-in', 'Supabase Auth (email + password), checked by the API on every request'],
+        ['Roles', 'Student, Faculty, Admin (HOD); stored in profiles'],
+        ['Course access', 'Students: enrolled courses only. Faculty: assigned courses only'],
+        ['Direct database access', 'Blocked for the public key (Row Level Security with no policies)'],
+        ['Sign-in limits', '5 wrong passwords per account, 30 per network address, per 15 minutes'],
+        ['First sign-in', 'Temporary / roll-number passwords must be changed before use'],
+      ])}
 
-          <div className="space-y-3 text-xs">
-            <label className="block font-semibold text-cloud-700">Semantic Model Mode</label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div
-                onClick={() => setProvider('local')}
-                className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
-                  provider === 'local'
-                    ? 'border-brand-500 bg-brand-50/50 text-brand-900 font-semibold'
-                    : 'border-cloud-200 hover:bg-cloud-50 text-cloud-700'
-                }`}
-              >
-                <div className="font-bold mb-1">Local / In-Memory (Active)</div>
-                <div className="text-[11px] text-cloud-500">Autonomous mock embeddings & grounded syllabus matching</div>
-              </div>
+      {section(HardDrive, 'File storage', [
+        ['Where', 'Private Supabase Storage bucket (academic-materials)'],
+        ['Opening a file', 'Short-lived signed link (1 hour), only for people in the course'],
+        ['Course materials', 'PDF, PowerPoint, Word, up to 20 MB'],
+        ['Student submissions', 'PDF only, up to 10 MB'],
+      ])}
 
-              <div
-                onClick={() => setProvider('gemini')}
-                className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
-                  provider === 'gemini'
-                    ? 'border-brand-500 bg-brand-50/50 text-brand-900 font-semibold'
-                    : 'border-cloud-200 hover:bg-cloud-50 text-cloud-700'
-                }`}
-              >
-                <div className="font-bold mb-1">Google Gemini API</div>
-                <div className="text-[11px] text-cloud-500">Ready to plug in Google Gemini Embeddings & 1.5 Flash</div>
-              </div>
-
-              <div
-                onClick={() => setProvider('openai')}
-                className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
-                  provider === 'openai'
-                    ? 'border-brand-500 bg-brand-50/50 text-brand-900 font-semibold'
-                    : 'border-cloud-200 hover:bg-cloud-50 text-cloud-700'
-                }`}
-              >
-                <div className="font-bold mb-1">OpenAI API</div>
-                <div className="text-[11px] text-cloud-500">Ready to plug in text-embedding-3 & GPT-4o</div>
-              </div>
-            </div>
-
-            {provider !== 'local' && (
-              <div className="pt-2 animate-in fade-in">
-                <label className="block font-semibold text-cloud-700 mb-1">
-                  {provider.toUpperCase()} API Key (Optional)
-                </label>
-                <input
-                  type="password"
-                  placeholder={`Enter ${provider} key to enable live cloud LLM inference...`}
-                  className="w-full px-3 py-2 rounded-xl border border-cloud-200 text-cloud-900 font-mono focus:outline-none focus:border-brand-500"
-                />
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Database & Cloud Storage Binding */}
-        <div className="cloud-card p-6 space-y-4">
-          <h2 className="text-sm font-bold text-cloud-900 pb-2 border-b border-cloud-100 flex items-center gap-2">
-            <HardDrive className="w-4 h-4 text-brand-600" />
-            Database & Cloud Storage Architecture
-          </h2>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-            <div>
-              <label className="block font-semibold text-cloud-700 mb-1">MongoDB Atlas URI</label>
-              <input
-                type="text"
-                defaultValue="mongodb+srv://cbit_dept_cluster.mongodb.net/academic_cloud"
-                className="w-full px-3 py-2 rounded-xl border border-cloud-200 text-cloud-900 font-mono bg-cloud-50"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold text-cloud-700 mb-1">S3 / GCS Storage Bucket</label>
-              <input
-                type="text"
-                defaultValue="cbit-dept-academic-cloud-primary-store"
-                className="w-full px-3 py-2 rounded-xl border border-cloud-200 text-cloud-900 font-mono bg-cloud-50"
-              />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center justify-end">
-          <button
-            type="submit"
-            className="px-6 py-2.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold shadow-xs transition-colors cursor-pointer flex items-center gap-2"
-          >
-            <CheckCircle2 className="w-4 h-4" />
-            Save Cloud Parameters
-          </button>
-        </div>
-
-      </form>
+      {section(Sparkles, 'Academic Assistant', [
+        ['Method', 'Retrieval only (no paid AI service): finds and quotes passages from course PDFs'],
+        ['Text model', 'bge-small-en-v1.5 (384-dimensional embeddings), runs on the server'],
+        ['Search', 'pgvector similarity within the user’s own courses, plus keyword matching'],
+        ['Syllabus questions', 'Answered from the stored Semester V syllabus'],
+      ])}
     </div>
   );
 }

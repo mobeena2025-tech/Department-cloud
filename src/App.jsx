@@ -32,7 +32,6 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminUsers from './pages/admin/AdminUsers';
 import AdminCourses from './pages/admin/AdminCourses';
 import AdminMaterials from './pages/admin/AdminMaterials';
-import AdminResources from './pages/admin/AdminResources';
 import AdminAnalytics from './pages/admin/AdminAnalytics';
 import AdminActivity from './pages/admin/AdminActivity';
 import AdminAuditLogs from './pages/admin/AdminAuditLogs';

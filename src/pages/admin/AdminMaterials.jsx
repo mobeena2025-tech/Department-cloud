@@ -28,6 +28,7 @@ export default function AdminMaterials({ onNavigate }) {
   const [selectedType, setSelectedType] = useState('ALL');
   const [selectedMaterial, setSelectedMaterial] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [storageMb, setStorageMb] = useState(null); // real total of uploaded files
 
   const loadMaterials = async () => {
     try {
@@ -42,10 +43,11 @@ export default function AdminMaterials({ onNavigate }) {
 
   useEffect(() => {
     loadMaterials();
+    api.getAnalytics().then((res) => setStorageMb(res?.analytics?.overview?.storageUsedMb ?? null)).catch(() => {});
   }, []);
 
   const handleArchive = async (id, title) => {
-    if (!window.confirm(`HOD/Admin action: Archive "${title}" from the department repository?`)) {
+    if (!window.confirm(`Delete "${title}" permanently? Students will no longer be able to open it.`)) {
       return;
     }
 
@@ -53,10 +55,10 @@ export default function AdminMaterials({ onNavigate }) {
       const res = await api.deleteMaterial(id);
       if (res?.success) {
         setMaterials((prev) => prev.filter((m) => m.id !== id));
-        addToast(`Archived resource "${title}" with administrative audit entry.`, 'info', 'Resource Archived');
+        addToast(`Deleted "${title}". The deletion is recorded in the activity log.`, 'info', 'Material Deleted');
       }
     } catch (err) {
-      addToast(err.message || 'Failed to archive resource', 'error', 'Error');
+      addToast(err.message || 'Failed to delete the material', 'error', 'Error');
     }
   };
 
@@ -96,7 +98,10 @@ export default function AdminMaterials({ onNavigate }) {
         <div className="flex items-center gap-2">
           <div className="p-2.5 rounded-xl bg-cloud-50 border border-cloud-200 flex items-center gap-2 text-xs">
             <HardDrive className="w-4 h-4 text-brand-600" />
-            <span className="text-cloud-700">Storage Used: <strong className="text-cloud-900">184.2 GB / 500 GB</strong></span>
+            <span className="text-cloud-700">
+              {materials.length} files &bull; Storage used:{' '}
+              <strong className="text-cloud-900">{storageMb === null ? '—' : `${storageMb} MB`}</strong>
+            </span>
           </div>
         </div>
       </div>
@@ -165,7 +170,7 @@ export default function AdminMaterials({ onNavigate }) {
       <div className="cloud-card overflow-hidden">
         <div className="px-6 py-3 border-b border-cloud-200 bg-cloud-50/70 flex items-center justify-between text-xs font-semibold text-cloud-500">
           <span>{filtered.length} Total Department Files Tracked</span>
-          <span>Access Boundary: Institutional Read/Archive</span>
+          <span>Admins can open or delete any material</span>
         </div>
 
         <div className="divide-y divide-cloud-100">
@@ -219,7 +224,7 @@ export default function AdminMaterials({ onNavigate }) {
                   className="px-2.5 py-1.5 rounded-lg bg-white border border-cloud-200 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 text-cloud-700 text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1 cursor-pointer"
                 >
                   <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                  <span>Archive</span>
+                  <span>Delete</span>
                 </button>
               </div>
             </div>

@@ -52,7 +52,7 @@ export default function Sidebar({ currentPath, onNavigate }) {
     { label: 'Courses', path: '/admin/courses', icon: BookOpen },
     { label: 'Materials Oversight', path: '/admin/materials', icon: FolderArchive },
     { label: 'Activity & Audit', path: '/admin/activity', icon: ShieldCheck },
-    { label: 'Settings', path: '/admin/settings', icon: Settings },
+    { label: 'System Info', path: '/admin/settings', icon: Settings },
     { label: 'Assistant', path: '/assistant', icon: Sparkles, highlight: true },
   ];
 
