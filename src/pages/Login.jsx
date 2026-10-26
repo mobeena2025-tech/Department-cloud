@@ -51,7 +51,7 @@ export default function Login({ onLoginSuccess }) {
             Secure academic infrastructure for the department
           </p>
           <div className="mt-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-brand-50 border border-brand-200 text-brand-700 text-[11px] font-semibold">
-            <span>Chaitanya Bharathi Institute of Technology &bull; CSE / AI&ML</span>
+            <span>Chaitanya Bharathi Institute of Technology &bull; AI &amp; DS</span>
           </div>
         </div>
 

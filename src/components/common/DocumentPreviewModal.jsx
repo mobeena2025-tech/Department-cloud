@@ -176,7 +176,7 @@ export default function DocumentPreviewModal({ material, isOpen, onClose }) {
                   Chaitanya Bharathi Institute of Technology &bull; Autonomous
                 </div>
                 <h1 className="text-lg font-bold text-cloud-900 uppercase tracking-tight">
-                  Department of Computer Science & Engineering / AI & ML
+                  Department of Artificial Intelligence &amp; Data Science
                 </h1>
                 <div className="text-xs text-cloud-500 mt-1">
                   Academic Term 2026-2027 &bull; Course Material Repository

@@ -20,6 +20,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import supabase from '../supabase.js';
 import { generateTemporaryPassword } from '../lib/password.js';
+import { DEPARTMENT } from '../lib/department.js';
 
 const args = process.argv.slice(2);
 const file = args.find((a) => !a.startsWith('--'));
@@ -165,6 +166,7 @@ async function main() {
       email: p.email,
       full_name: p.name,
       role: p.role,
+      department: DEPARTMENT,
       roll_number: isStudent ? p.roll : null,
       semester: isStudent ? p.semester : null,
       section: isStudent ? p.section : null,

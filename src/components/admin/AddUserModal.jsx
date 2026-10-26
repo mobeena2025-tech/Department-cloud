@@ -11,7 +11,7 @@ export default function AddUserModal({ isOpen, onClose, onUserAdded }) {
     email: '',
     role: 'student',
     password: '',
-    department: 'CSE - AI & ML',
+    department: 'AI & DS',
     rollNo: '',
     empId: '',
     semester: 6,

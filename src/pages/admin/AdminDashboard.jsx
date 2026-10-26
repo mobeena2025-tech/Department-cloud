@@ -58,7 +58,7 @@ export default function AdminDashboard({ onNavigate }) {
               <span className="badge-pill bg-purple-500/30 border border-purple-400/40 text-purple-100">
                 HOD Executive Secretariat
               </span>
-              <span>Dept. of CSE / AI & ML &bull; Central Cloud Console</span>
+              <span>Dept. of AI &amp; DS &bull; Central Cloud Console</span>
             </div>
             <h1 className="text-2xl font-bold tracking-tight">
               Department Academic Cloud Overview

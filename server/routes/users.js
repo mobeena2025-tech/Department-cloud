@@ -5,6 +5,7 @@ import { recordAuditLog } from '../lib/audit.js';
 import { visibleCourseIds } from '../lib/access.js';
 import { isUuid } from '../lib/courseLookup.js';
 import { generateTemporaryPassword } from '../lib/password.js';
+import { DEPARTMENT } from '../lib/department.js';
 import { HttpError, asyncHandler, optionalInt, optionalString, requiredString } from '../lib/validate.js';
 
 const router = express.Router();
@@ -65,7 +66,7 @@ router.post('/', requireRole('admin'), asyncHandler(async (req, res) => {
     full_name: name,
     email,
     role,
-    department: optionalString(body.department, 'department', { max: 100 }) ?? 'CSE - AI & ML',
+    department: optionalString(body.department, 'department', { max: 100 }) ?? DEPARTMENT,
     roll_number: isStudent ? optionalString(body.rollNo, 'rollNo', { max: 30 }) ?? null : null,
     semester: isStudent ? optionalInt(body.semester, 'semester', { min: 1, max: 8 }) ?? null : null,
     section: isStudent ? optionalString(body.section, 'section', { max: 2 }) ?? null : null,

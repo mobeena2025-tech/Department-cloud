@@ -1,4 +1,5 @@
 import express from 'express';
+import { DEPARTMENT } from '../lib/department.js';
 import supabase from '../supabase.js';
 import { findCourse, isUuid } from '../lib/courseLookup.js';
 import { requireRole, toUserResponse } from '../lib/auth.js';
@@ -183,7 +184,7 @@ router.post('/', requireRole('admin'), asyncHandler(async (req, res) => {
   const section = (optionalString(body.section, 'section', { max: 2, pattern: SECTION_PATTERN }) || 'A').toUpperCase();
   const credits = optionalInt(body.credits, 'credits', { min: 1, max: 10 }) ?? 3;
   const description = optionalString(body.description, 'description', { max: 2000 }) ?? null;
-  const department = optionalString(body.department, 'department', { max: 100 }) ?? null;
+  const department = optionalString(body.department, 'department', { max: 100 }) ?? DEPARTMENT;
   const facultyId = optionalString(body.facultyId, 'facultyId', { max: 40 });
   // Check the teacher before creating anything.
   if (facultyId) await loadPersonWithRole(facultyId, 'faculty');

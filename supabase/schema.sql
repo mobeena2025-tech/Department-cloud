@@ -29,7 +29,7 @@ create table if not exists public.profiles (
   full_name   text not null,
   email       text not null unique,
   role        text not null check (role in ('admin', 'faculty', 'student')),
-  department  text default 'CSE - AI & ML',
+  department  text default 'AI & DS',
   roll_number text,
   semester    int check (semester between 1 and 8),
   section     text,
@@ -49,7 +49,7 @@ create table if not exists public.courses (
   section     text not null default 'A',
   credits     int  not null default 3,
   description text,
-  department  text default 'CSE - AI & ML',
+  department  text default 'AI & DS',
   created_at  timestamptz not null default now()
 );
 

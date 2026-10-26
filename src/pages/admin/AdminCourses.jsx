@@ -7,7 +7,7 @@ import CoursePeopleModal from '../../components/admin/CoursePeopleModal';
 const EMPTY_COURSE = {
   code: '',
   title: '',
-  department: 'CSE - AI & ML',
+  department: 'AI & DS',
   semester: 6,
   credits: 3,
   facultyId: '',

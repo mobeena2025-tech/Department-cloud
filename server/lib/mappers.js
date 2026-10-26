@@ -1,3 +1,4 @@
+import { DEPARTMENT } from './department.js';
 // Convert database rows (snake_case) into the JSON shapes the frontend uses
 // (camelCase). Keep every response shape in this one file.
 
@@ -143,7 +144,7 @@ export function toAnnouncementResponse(a) {
     content: a.content,
     category: a.category,
     priority: a.priority,
-    department: 'CSE - AI & ML',
+    department: DEPARTMENT,
     author: a.author_name,
     date: a.created_at,
     attachments: [],
