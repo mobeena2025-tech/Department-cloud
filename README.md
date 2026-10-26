@@ -191,8 +191,8 @@ department PDF), keyed by course code.
   (or weeks if the code ends in `-LAB`).
 - Uploads and assignments pick a unit/week from that course's list, or **Other**
   (e.g. a case study or question bank that belongs to no unit).
-- Each course page has a **Syllabus** tab (units/weekly programs, outcomes,
-  textbooks), and each course has its syllabus PDF under *Other*.
+- Clicking a course opens its **syllabus unit by unit** (weeks for labs), with the
+  notes uploaded for each unit inside that unit, then outcomes and textbooks.
 - The Assistant answers syllabus questions exactly from this data, e.g. *"unit 4 of
   operating systems"*, *"week 3 program in the ANN lab"*, *"textbooks for CN"*.
 - Labs carry 1.5 credits: run
@@ -274,6 +274,12 @@ npm start
 Sign-in is protected against guessing: 5 wrong passwords lock that account for
 15 minutes, and 30 failures from one network address block that address for 15 minutes.
 Correct sign-ins never count.
+
+### Assignments and grading
+
+Faculty must enter the **total marks** when creating an assignment. Students submit a
+PDF; faculty open **Grade Submissions** (menu, or the button on each assignment),
+enter marks out of the total plus feedback, and the student sees the grade.
 
 ### Passwords
 

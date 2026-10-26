@@ -16,7 +16,10 @@ import GradeSubmissionModal from '../../components/faculty/GradeSubmissionModal'
 export default function FacultySubmissions() {
   const [submissions, setSubmissions] = useState([]);
   const [assignments, setAssignments] = useState([]);
-  const [selectedAssignmentId, setSelectedAssignmentId] = useState('asg_ann_02');
+  // Start on the assignment chosen on another page (if any), else the first one.
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState(() => {
+    try { return sessionStorage.getItem('dac_grade_assignment') || ''; } catch { return ''; }
+  });
   const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [loading, setLoading] = useState(true);
@@ -27,7 +30,10 @@ export default function FacultySubmissions() {
         api.getAssignments(),
         api.getSubmissions(),
       ]);
-      if (aRes?.assignments) setAssignments(aRes.assignments);
+      if (aRes?.assignments) {
+        setAssignments(aRes.assignments);
+        setSelectedAssignmentId((id) => (aRes.assignments.some((a) => a.id === id) ? id : aRes.assignments[0]?.id || ''));
+      }
       if (sRes?.submissions) setSubmissions(sRes.submissions);
     } finally {
       setLoading(false);
@@ -38,10 +44,11 @@ export default function FacultySubmissions() {
     loadData();
   }, []);
 
-  const currentAssignment = assignments.find((a) => a.id === selectedAssignmentId) || assignments[0];
+  const currentAssignment = assignments.find((a) => a.id === selectedAssignmentId);
+  const forAssignment = submissions.filter((s) => s.assignmentId === selectedAssignmentId);
+  const gradedCount = forAssignment.filter((s) => s.status === 'Graded').length;
 
-  const filteredSubmissions = submissions.filter((s) => {
-    if (s.assignmentId !== selectedAssignmentId && selectedAssignmentId !== 'ALL') return false;
+  const filteredSubmissions = forAssignment.filter((s) => {
     if (statusFilter !== 'ALL' && s.status.toLowerCase() !== statusFilter.toLowerCase()) return false;
     return true;
   });
@@ -63,7 +70,10 @@ export default function FacultySubmissions() {
           <label className="text-xs text-cloud-500 font-medium">Assignment:</label>
           <select
             value={selectedAssignmentId}
-            onChange={(e) => setSelectedAssignmentId(e.target.value)}
+            onChange={(e) => {
+              setSelectedAssignmentId(e.target.value);
+              try { sessionStorage.setItem('dac_grade_assignment', e.target.value); } catch { /* optional */ }
+            }}
             className="px-3 py-2 rounded-xl border border-cloud-200 text-xs text-cloud-900 font-semibold bg-white"
           >
             {assignments.map((asg) => (
@@ -97,8 +107,12 @@ export default function FacultySubmissions() {
             <div className="text-center p-2.5 rounded-lg bg-white border border-brand-200">
               <span className="text-cloud-400 block text-[10px] uppercase font-bold">Turned In</span>
               <span className="font-bold text-emerald-700 text-sm">
-                {submissions.filter((s) => s.assignmentId === currentAssignment.id && (s.status === 'Submitted' || s.status === 'Graded')).length}
+                {forAssignment.length}
               </span>
+            </div>
+            <div className="text-center p-2.5 rounded-lg bg-white border border-brand-200">
+              <span className="text-cloud-400 block text-[10px] uppercase font-bold">Graded</span>
+              <span className="font-bold text-purple-700 text-sm">{gradedCount}</span>
             </div>
           </div>
         </div>
@@ -116,8 +130,7 @@ export default function FacultySubmissions() {
               className="bg-transparent border-none text-xs text-cloud-700 font-medium focus:outline-none"
             >
               <option value="ALL">All Statuses</option>
-              <option value="submitted">Submitted</option>
-              <option value="pending">Pending</option>
+              <option value="submitted">Waiting for grade</option>
               <option value="graded">Graded</option>
             </select>
           </div>
@@ -135,6 +148,19 @@ export default function FacultySubmissions() {
               </tr>
             </thead>
             <tbody className="divide-y divide-cloud-100 text-cloud-800">
+              {filteredSubmissions.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="py-8 px-6 text-center text-cloud-500">
+                    {loading
+                      ? 'Loading...'
+                      : !assignments.length
+                        ? 'You have not published any assignments yet.'
+                        : forAssignment.length
+                          ? 'No submissions match this filter.'
+                          : 'No student has submitted this assignment yet.'}
+                  </td>
+                </tr>
+              )}
               {filteredSubmissions.map((sub, idx) => {
                 const isSubmitted = sub.status === 'Submitted' || sub.status === 'Graded';
                 const dateStr = sub.submittedAt
@@ -147,10 +173,10 @@ export default function FacultySubmissions() {
                     {/* Student */}
                     <td className="py-3.5 px-6">
                       <div className="font-bold text-cloud-900">
-                        {sub.studentName || `Student 00${idx + 1}`}
+                        {sub.studentName || 'Unknown student'}
                       </div>
                       <div className="text-[11px] text-cloud-500 font-mono">
-                        {sub.rollNo || `16012173304${5 + idx}`}
+                        {sub.rollNo || '—'}
                       </div>
                     </td>
 

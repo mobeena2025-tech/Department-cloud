@@ -86,7 +86,8 @@ router.post('/', requireRole('faculty', 'admin'), asyncHandler(async (req, res) 
   const description = optionalString(body.description, 'description', { max: 5000 }) ?? null;
   const parsedUnit = parsePeriod(body.unitNumber);
   const unitNumber = parsedUnit === undefined ? 1 : parsedUnit; // null = "Other" (e.g. a case study)
-  const maxMarks = optionalInt(body.maxMarks, 'maxMarks', { min: 1, max: 1000 }) ?? 25;
+  const maxMarks = optionalInt(body.maxMarks, 'maxMarks', { min: 1, max: 1000 });
+  if (maxMarks === undefined) throw new HttpError(400, 'Enter the total marks for this assignment (maxMarks)');
   const attachmentName = optionalString(body.attachmentName, 'attachmentName', { max: 200 }) ?? null;
 
   const { course, error: courseError } = await findCourse(courseIdParam);

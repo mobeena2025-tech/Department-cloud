@@ -69,7 +69,7 @@ export default function FacultyAssignments({ onNavigate }) {
                   Due: {new Date(asg.dueDate).toLocaleString()}
                 </span>
                 <span className="text-xs text-cloud-500 font-medium">
-                  Max Marks: {asg.maxMarks}
+                  Out of {asg.maxMarks} marks
                 </span>
               </div>
 
@@ -103,10 +103,13 @@ export default function FacultyAssignments({ onNavigate }) {
               </div>
 
               <button
-                onClick={() => onNavigate('/faculty/submissions')}
+                onClick={() => {
+                  try { sessionStorage.setItem('dac_grade_assignment', asg.id); } catch { /* optional */ }
+                  onNavigate('/faculty/submissions');
+                }}
                 className="px-4 py-2 rounded-xl bg-cloud-900 hover:bg-cloud-800 text-white text-xs font-semibold shadow-xs transition-colors cursor-pointer"
               >
-                View Submissions &rarr;
+                Grade Submissions &rarr;
               </button>
             </div>
           </div>

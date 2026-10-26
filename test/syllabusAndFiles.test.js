@@ -52,21 +52,26 @@ const due = new Date(Date.now() + 7 * 864e5).toISOString();
 test('assignments can be published for a week, or under "Other"', async () => {
   const week = await request('POST', '/assignments', {
     token: tokens.facultyA,
-    body: { title: 'Week 4 CNN program', courseId: labId, unitNumber: 4, dueDate: due },
+    body: { title: 'Week 4 CNN program', courseId: labId, unitNumber: 4, dueDate: due, maxMarks: 10 },
   });
   assert.equal(week.status, 201);
   assert.equal(week.body.assignment.unitNumber, 4);
 
   const other = await request('POST', '/assignments', {
     token: tokens.facultyA,
-    body: { title: 'Case study', courseId: 'CS202', unitNumber: 'other', dueDate: due },
+    body: { title: 'Case study', courseId: 'CS202', unitNumber: 'other', dueDate: due, maxMarks: 20 },
   });
   assert.equal(other.status, 201);
   assert.equal(other.body.assignment.unitNumber, null);
   assert.equal(other.body.assignment.unitTitle, 'Other');
 
-  const noCourse = await request('POST', '/assignments', { token: tokens.facultyA, body: { title: 'x', dueDate: due } });
+  const noCourse = await request('POST', '/assignments', { token: tokens.facultyA, body: { title: 'x', dueDate: due, maxMarks: 10 } });
   assert.equal(noCourse.status, 400);
+
+  // Faculty must say how many marks it is out of.
+  const noMarks = await request('POST', '/assignments', { token: tokens.facultyA, body: { title: 'x', courseId: 'CS202', dueDate: due } });
+  assert.equal(noMarks.status, 400);
+  assert.match(noMarks.body.message, /total marks/);
 });
 
 test('PowerPoint files upload as download-only; materials can be filed under "Other"', async () => {

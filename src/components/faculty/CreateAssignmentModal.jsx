@@ -17,7 +17,7 @@ export default function CreateAssignmentModal({ isOpen, onClose, onCreated, cour
       const pad = (n) => String(n).padStart(2, '0');
       return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T23:59`;
     })(),
-    maxMarks: 25,
+    maxMarks: '', // faculty must say how many marks it is out of
     description: '',
     attachmentName: '',
   });
@@ -46,6 +46,11 @@ export default function CreateAssignmentModal({ isOpen, onClose, onCreated, cour
       addToast('Please choose a course', 'error');
       return;
     }
+    const marks = Number(formData.maxMarks);
+    if (!formData.maxMarks || !Number.isInteger(marks) || marks < 1 || marks > 1000) {
+      addToast('Enter the total marks for this assignment (a whole number, e.g. 10)', 'error');
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -53,6 +58,7 @@ export default function CreateAssignmentModal({ isOpen, onClose, onCreated, cour
       const res = await api.createAssignment({
         ...formData,
         unitNumber: toApiPeriod(formData.unitNumber),
+        maxMarks: marks,
         dueDate: new Date(formData.dueDate).toISOString(),
       });
       addToast(`Assignment "${formData.title}" published!`, 'success', 'Course Assessment');
@@ -145,13 +151,18 @@ export default function CreateAssignmentModal({ isOpen, onClose, onCreated, cour
             </div>
 
             <div>
-              <label className="block font-semibold text-cloud-700 mb-1">Max Marks</label>
+              <label className="block font-semibold text-cloud-700 mb-1">
+                Total Marks <span className="text-rose-500">*</span>
+              </label>
               <input
                 type="number"
-                min={5}
-                max={100}
+                min={1}
+                max={1000}
+                step={1}
+                required
+                placeholder="e.g. 10"
                 value={formData.maxMarks}
-                onChange={(e) => setFormData({ ...formData, maxMarks: Number(e.target.value) })}
+                onChange={(e) => setFormData({ ...formData, maxMarks: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl border border-cloud-200 text-cloud-900"
               />
             </div>

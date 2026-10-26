@@ -15,7 +15,8 @@ import {
   HardDrive,
   FileCheck2,
   Lock,
-  Layers
+  Layers,
+  Award,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
@@ -39,6 +40,7 @@ export default function Sidebar({ currentPath, onNavigate }) {
     { label: 'Upload Material', path: '/faculty/upload', icon: HardDrive },
     { label: 'Courses', path: '/faculty/courses', icon: BookOpen },
     { label: 'Assignments', path: '/faculty/assignments', icon: ClipboardList },
+    { label: 'Grade Submissions', path: '/faculty/submissions', icon: Award },
     { label: 'Announcements', path: '/faculty/announcements', icon: Bell },
     { label: 'Assistant', path: '/assistant', icon: Sparkles, highlight: true },
     { label: 'Profile', path: '/faculty/profile', icon: User },
@@ -101,22 +103,8 @@ export default function Sidebar({ currentPath, onNavigate }) {
         </nav>
       </div>
 
-      {/* Bottom: Cloud Storage Status & Access Boundary */}
+      {/* Bottom: what this account can see */}
       <div className="p-4 border-t border-cloud-200/90 bg-cloud-50/60 space-y-3">
-        {/* Storage Gauge */}
-        <div>
-          <div className="flex items-center justify-between text-[11px] text-cloud-600 mb-1.5">
-            <div className="flex items-center gap-1.5">
-              <HardDrive className="w-3.5 h-3.5 text-cloud-400" />
-              <span>Dept Cloud Storage</span>
-            </div>
-            <span className="font-semibold text-cloud-800">184.2 / 500 GB</span>
-          </div>
-          <div className="w-full bg-cloud-200 h-1.5 rounded-full overflow-hidden">
-            <div className="bg-brand-600 h-full rounded-full w-[36.8%]" />
-          </div>
-        </div>
-
         {/* Security boundary badge */}
         <div className="p-2.5 rounded-xl bg-white border border-cloud-200 flex items-center gap-2.5">
           <div className="w-6 h-6 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center justify-center text-emerald-600 flex-shrink-0">
@@ -125,9 +113,9 @@ export default function Sidebar({ currentPath, onNavigate }) {
           <div className="text-[10px] leading-tight">
             <div className="font-semibold text-cloud-900">Access Boundaries Enforced</div>
             <div className="text-cloud-500 truncate">
-              {currentUser?.role === 'student' && 'Audit Log Active &bull; Roll Token'}
-              {currentUser?.role === 'faculty' && 'Course Level Key Authorized'}
-              {currentUser?.role === 'admin' && 'Root Policy Clearance'}
+              {currentUser?.role === 'student' && 'Only your enrolled courses'}
+              {currentUser?.role === 'faculty' && 'Only your assigned courses'}
+              {currentUser?.role === 'admin' && 'Full department access'}
             </div>
           </div>
         </div>
